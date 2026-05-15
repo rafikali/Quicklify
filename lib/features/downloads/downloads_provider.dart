@@ -46,11 +46,13 @@ class DownloadsProvider extends ChangeNotifier {
     }
 
     final item = _downloads[index];
-    // status is already our internal code: 1=running, 2=complete, 3=failed, 5=cancelled
     item.status = status;
-    item.progress = progress;
+    // progress == -1 means "keep current progress" (used when pausing)
+    if (progress >= 0) {
+      item.progress = progress;
+    }
 
-    DownloadDao.updateStatus(item.id, status, progress);
+    DownloadDao.updateStatus(item.id, status, item.progress);
 
     notifyListeners();
   }
@@ -106,14 +108,17 @@ class DownloadsProvider extends ChangeNotifier {
       dev.log('DownloadService returned taskId: $taskId', name: _tag);
 
       if (taskId != null) {
-        item.status = 1; // running
-        await DownloadDao.updateTaskId(id, taskId);
+        // Update in-memory list BEFORE any async work so progress
+        // callbacks can find this item by taskId immediately.
         final index = _downloads.indexWhere((d) => d.id == id);
         if (index != -1) {
           _downloads[index] = item.copyWith(taskId: taskId, status: 1);
         }
         notifyListeners();
         dev.log('Download running with taskId: $taskId', name: _tag);
+
+        // Persist to DB (progress callbacks are safe now)
+        await DownloadDao.updateTaskId(id, taskId);
       } else {
         dev.log('WARNING: taskId is null - download may have failed to enqueue', name: _tag);
       }
@@ -122,6 +127,71 @@ class DownloadsProvider extends ChangeNotifier {
       dev.log('Stack trace: $stackTrace', name: _tag);
     }
     dev.log('--- ENQUEUE END ---', name: _tag);
+  }
+
+  /// Enqueue a YouTube merge download (video-only + audio → merged MP4).
+  Future<void> enqueueMergeDownload({
+    required String sourceUrl,
+    required String videoUrl,
+    required String audioUrl,
+    required String filename,
+    required String platform,
+    required String quality,
+  }) async {
+    dev.log('--- ENQUEUE MERGE START ---', name: _tag);
+    dev.log('sourceUrl: $sourceUrl', name: _tag);
+    dev.log('videoUrl: $videoUrl', name: _tag);
+    dev.log('audioUrl: $audioUrl', name: _tag);
+    dev.log('filename: $filename', name: _tag);
+
+    final id = _uuid.v4();
+
+    if (!filename.contains('.')) {
+      filename = '$filename.mp4';
+    }
+
+    final item = DownloadItem(
+      id: id,
+      sourceUrl: sourceUrl,
+      downloadUrl: videoUrl, // store video URL as primary
+      filename: filename,
+      platform: platform,
+      quality: quality,
+    );
+
+    try {
+      await DownloadDao.insert(item);
+      dev.log('Saved to database with id: $id', name: _tag);
+    } catch (e) {
+      dev.log('ERROR saving to database: $e', name: _tag);
+    }
+
+    _downloads.insert(0, item);
+    notifyListeners();
+
+    try {
+      final taskId = await DownloadService.enqueueMergeDownload(
+        videoUrl: videoUrl,
+        audioUrl: audioUrl,
+        filename: filename,
+      );
+      dev.log('DownloadService returned taskId: $taskId', name: _tag);
+
+      if (taskId != null) {
+        final index = _downloads.indexWhere((d) => d.id == id);
+        if (index != -1) {
+          _downloads[index] = item.copyWith(taskId: taskId, status: 1);
+        }
+        notifyListeners();
+        dev.log('Merge download running with taskId: $taskId', name: _tag);
+
+        await DownloadDao.updateTaskId(id, taskId);
+      }
+    } catch (e, stackTrace) {
+      dev.log('ERROR enqueuing merge download: $e', name: _tag);
+      dev.log('Stack trace: $stackTrace', name: _tag);
+    }
+    dev.log('--- ENQUEUE MERGE END ---', name: _tag);
   }
 
   Future<void> pauseDownload(DownloadItem item) async {

@@ -14,39 +14,36 @@ class PlatformChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Chip(
-      avatar: Icon(
-        UrlValidator.getPlatformIcon(platform),
-        size: 18,
-        color: _getPlatformColor(),
-      ),
-      label: Text(
-        label,
-        style: const TextStyle(
-          color: AppColors.textSecondary,
-          fontSize: 12,
+    final color = AppColors.getPlatformColor(platform);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withValues(alpha: 0.15),
         ),
       ),
-      backgroundColor: AppColors.surfaceLight,
-      side: BorderSide.none,
-      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            UrlValidator.getPlatformIcon(platform),
+            size: 16,
+            color: color,
+          ),
+          const SizedBox(width: 7),
+          Text(
+            label,
+            style: TextStyle(
+              color: color.withValues(alpha: 0.9),
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
-  }
-
-  Color _getPlatformColor() {
-    switch (platform) {
-      case 'youtube':
-        return AppColors.youtube;
-      case 'facebook':
-        return AppColors.facebook;
-      case 'instagram':
-        return AppColors.instagram;
-      case 'twitter':
-        return AppColors.twitter;
-      case 'reddit':
-        return AppColors.reddit;
-      default:
-        return AppColors.primary;
-    }
   }
 }
