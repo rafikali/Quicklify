@@ -4,10 +4,14 @@ import 'package:dio/dio.dart';
 const String _tag = 'PipedService';
 
 /// Piped API instance URLs — fallback list in case one goes down.
+/// These are community-hosted; they can go offline at any time.
+/// The download flow falls back to Cobalt if all instances fail.
 const List<String> _pipedInstances = [
-  'https://api.piped.private.coffee',
+  'https://pipedapi.kavin.rocks',
+  'https://pipedapi.in.projectsegfau.lt',
   'https://pipedapi.drgns.space',
-  'https://pipedapi.darkness.services',
+  'https://pipedapi.r4fo.com',
+  'https://pipedapi.simpleprivacy.fr',
 ];
 
 class PipedStream {
@@ -146,6 +150,12 @@ class PipedService {
             .toList();
 
         dev.log('Got ${videoStreams.length} video streams, ${audioStreams.length} audio streams', name: _tag);
+
+        if (videoStreams.isEmpty && audioStreams.isEmpty) {
+          dev.log('Instance $baseUrl returned 0 streams, skipping', name: _tag);
+          continue;
+        }
+
         dev.log('Title: $title', name: _tag);
 
         return PipedResult(

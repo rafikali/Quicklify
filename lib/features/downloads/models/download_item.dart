@@ -11,6 +11,7 @@ class DownloadItem {
   final DateTime createdAt;
   DateTime? completedAt;
   int? fileSize;
+  String? galleryPath; // gallery URI or file path after save
 
   DownloadItem({
     required this.id,
@@ -25,6 +26,7 @@ class DownloadItem {
     DateTime? createdAt,
     this.completedAt,
     this.fileSize,
+    this.galleryPath,
   }) : createdAt = createdAt ?? DateTime.now();
 
   bool get isActive => status == 0 || status == 1 || status == 4;
@@ -64,6 +66,7 @@ class DownloadItem {
     'created_at': createdAt.millisecondsSinceEpoch,
     'completed_at': completedAt?.millisecondsSinceEpoch,
     'file_size': fileSize,
+    'gallery_path': galleryPath,
   };
 
   factory DownloadItem.fromMap(Map<String, dynamic> map) => DownloadItem(
@@ -81,6 +84,7 @@ class DownloadItem {
         ? DateTime.fromMillisecondsSinceEpoch(map['completed_at'] as int)
         : null,
     fileSize: map['file_size'] as int?,
+    galleryPath: map['gallery_path'] as String?,
   );
 
   DownloadItem copyWith({
@@ -89,6 +93,7 @@ class DownloadItem {
     int? progress,
     DateTime? completedAt,
     int? fileSize,
+    String? galleryPath,
   }) {
     return DownloadItem(
       id: id,
@@ -103,6 +108,7 @@ class DownloadItem {
       createdAt: createdAt,
       completedAt: completedAt ?? this.completedAt,
       fileSize: fileSize ?? this.fileSize,
+      galleryPath: galleryPath ?? this.galleryPath,
     );
   }
 }

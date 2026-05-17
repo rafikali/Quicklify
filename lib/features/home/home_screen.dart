@@ -7,7 +7,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/url_validator.dart';
 import '../../core/services/cobalt_service.dart';
-import '../../core/services/piped_service.dart';
+import '../../core/services/youtube_service.dart';
 import '../../data/models/cobalt_request.dart';
 import '../downloads/downloads_provider.dart';
 import '../settings/settings_provider.dart';
@@ -17,14 +17,15 @@ const String _tag = 'HomeScreen';
 
 class HomeScreen extends StatefulWidget {
   final String? initialUrl;
+  final VoidCallback? onDownloadStarted;
 
-  const HomeScreen({super.key, this.initialUrl});
+  const HomeScreen({super.key, this.initialUrl, this.onDownloadStarted});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<HomeScreen> createState() => HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
+class HomeScreenState extends State<HomeScreen>
     with WidgetsBindingObserver, TickerProviderStateMixin {
   String? _detectedUrl;
   String? _detectedPlatform;
@@ -104,6 +105,9 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _onTapDownload() async {
+    // Prevent double-tap while already loading
+    if (_isLoading) return;
+
     // If we have a detected URL, quick download it
     if (_detectedUrl != null && _detectedPlatform != null) {
       final settings = context.read<SettingsProvider>();
@@ -184,8 +188,10 @@ class _HomeScreenState extends State<HomeScreen>
 
     try {
       if (platform == 'youtube') {
+        // YouTube uses a dedicated self-hosted yt-dlp API server
         await _startYouTubeDownload(url, quality, downloadMode, audioFormat);
       } else {
+        // All other platforms go through Cobalt
         await _startCobaltDownload(url, platform, quality, downloadMode, audioFormat);
       }
     } catch (e, stackTrace) {
@@ -204,80 +210,54 @@ class _HomeScreenState extends State<HomeScreen>
     String downloadMode,
     String audioFormat,
   ) async {
-    dev.log('Using Piped API for YouTube...', name: _tag);
+    final settings = context.read<SettingsProvider>();
+    dev.log('YouTube extraction (explode → yt-dlp → piped) ...', name: _tag);
 
-    final result = await PipedService.getStreams(url);
-    if (result == null) {
-      dev.log('Piped API returned null', name: _tag);
-      Fluttertoast.showToast(msg: 'Could not fetch YouTube video info. Try again.');
-      return;
-    }
+    final result = await YouTubeService.getDownloadUrl(
+      url: url,
+      quality: quality,
+      mode: downloadMode,
+      audioFormat: audioFormat,
+      ytDlpApiUrl: settings.youtubeApiUrl,
+      ytDlpApiKey: settings.youtubeApiKey,
+    );
+
     if (!mounted) return;
 
-    final downloadsProvider = context.read<DownloadsProvider>();
-    final isAudioOnly = downloadMode == 'audio';
+    if (result.success && result.url != null) {
+      dev.log('YouTube extraction success: ${result.filename}', name: _tag);
+      final downloadsProvider = context.read<DownloadsProvider>();
 
-    if (isAudioOnly) {
-      final audio = PipedService.pickAudioStream(result.audioStreams);
-      if (audio == null) {
-        Fluttertoast.showToast(msg: 'No audio stream available.');
-        return;
-      }
-      final ext = audio.format == 'M4A' ? 'm4a' : 'opus';
-      final filename = '${result.title}.$ext';
-      dev.log('Audio-only: ${audio.quality} ${audio.format}', name: _tag);
-
-      await downloadsProvider.enqueueDownload(
-        sourceUrl: url,
-        downloadUrl: audio.url,
-        filename: filename,
-        platform: 'youtube',
-        quality: audio.quality,
-      );
-    } else {
-      final video = PipedService.pickVideoStream(result.videoStreams, quality);
-      if (video == null) {
-        Fluttertoast.showToast(msg: 'No video stream available at this quality.');
-        return;
-      }
-
-      if (!video.videoOnly) {
-        final filename = '${result.title} (${video.quality}).mp4';
-        dev.log('Combined stream: ${video.quality}', name: _tag);
-
-        await downloadsProvider.enqueueDownload(
-          sourceUrl: url,
-          downloadUrl: video.url,
-          filename: filename,
-          platform: 'youtube',
-          quality: video.quality,
-        );
-      } else {
-        final audio = PipedService.pickAudioStream(
-          result.audioStreams,
-          preferM4a: video.mimeType.contains('mp4'),
-        );
-        if (audio == null) {
-          Fluttertoast.showToast(msg: 'No audio stream available for merging.');
-          return;
-        }
-
-        final filename = '${result.title} (${video.quality}).mp4';
-        dev.log('Merge download: video=${video.quality} ${video.format}, audio=${audio.quality} ${audio.format}', name: _tag);
-
+      if (result.needsMerge && result.audioUrl != null) {
+        // High-quality: separate video + audio streams, need merge
+        dev.log('Using merge download (video + audio)', name: _tag);
         await downloadsProvider.enqueueMergeDownload(
           sourceUrl: url,
-          videoUrl: video.url,
-          audioUrl: audio.url,
-          filename: filename,
+          videoUrl: result.url!,
+          audioUrl: result.audioUrl!,
+          filename: result.filename ?? 'youtube_video.mp4',
           platform: 'youtube',
-          quality: video.quality,
+          quality: quality,
+          isYouTube: true,
+        );
+      } else {
+        // Muxed stream or audio-only
+        await downloadsProvider.enqueueDownload(
+          sourceUrl: url,
+          downloadUrl: result.url!,
+          filename: result.filename ?? 'youtube_video.mp4',
+          platform: 'youtube',
+          quality: quality,
+          isYouTube: true,
         );
       }
+      if (mounted) _showDownloadStarted();
+    } else {
+      dev.log('YouTube extraction failed: ${result.error}', name: _tag);
+      Fluttertoast.showToast(
+        msg: result.error ?? 'Failed to get YouTube download link',
+      );
     }
-
-    if (mounted) _showDownloadStarted();
-    dev.log('YouTube download enqueued successfully', name: _tag);
   }
 
   Future<void> _startCobaltDownload(
@@ -331,6 +311,9 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _showDownloadStarted() {
+    // Navigate to downloads tab
+    widget.onDownloadStarted?.call();
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: const Row(

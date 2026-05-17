@@ -8,6 +8,7 @@ import '../constants/app_constants.dart';
 class StorageService {
   static const String _tag = 'StorageService';
   static const _mediaChannel = MethodChannel('com.example.quicklify/media_scanner');
+  static const _galleryChannel = MethodChannel('com.example.quicklify/gallery');
 
   StorageService._();
 
@@ -19,6 +20,65 @@ class StorageService {
       dev.log('Media scan complete: $path', name: _tag);
     } catch (e) {
       dev.log('Media scan failed: $e', name: _tag);
+    }
+  }
+
+  /// Save a downloaded file to the phone's gallery (Videos/Music).
+  /// On Android 10+, uses MediaStore API (scoped storage).
+  /// On Android 9 and below, copies to public Movies/Music folder and scans.
+  /// Returns the gallery URI or path on success.
+  static Future<String?> saveToGallery(String filePath, String filename) async {
+    if (!Platform.isAndroid) return null;
+
+    try {
+      final mimeType = _getMimeType(filename);
+      dev.log('Saving to gallery: $filename (mime: $mimeType)', name: _tag);
+
+      final result = await _galleryChannel.invokeMethod('saveToGallery', {
+        'filePath': filePath,
+        'filename': filename,
+        'mimeType': mimeType,
+      });
+
+      dev.log('Saved to gallery: $result', name: _tag);
+      return result as String?;
+    } catch (e) {
+      dev.log('Gallery save failed: $e — falling back to scan', name: _tag);
+      // Fallback: just scan the file so it at least shows in file manager
+      await scanFile(filePath);
+      return null;
+    }
+  }
+
+  /// Determine MIME type from filename extension.
+  static String _getMimeType(String filename) {
+    final ext = filename.split('.').last.toLowerCase();
+    switch (ext) {
+      case 'mp4':
+        return 'video/mp4';
+      case 'webm':
+        return 'video/webm';
+      case 'mkv':
+        return 'video/x-matroska';
+      case 'mov':
+        return 'video/quicktime';
+      case 'avi':
+        return 'video/x-msvideo';
+      case 'm4a':
+        return 'audio/mp4';
+      case 'mp3':
+        return 'audio/mpeg';
+      case 'ogg':
+      case 'opus':
+        return 'audio/ogg';
+      case 'wav':
+        return 'audio/wav';
+      case 'flac':
+        return 'audio/flac';
+      case 'aac':
+        return 'audio/aac';
+      default:
+        return 'video/mp4';
     }
   }
 
@@ -44,11 +104,10 @@ class StorageService {
 
         if (manage.isPermanentlyDenied) {
           dev.log('All storage permissions permanently denied', name: _tag);
-          // Don't block the app — we'll use app-specific directory as fallback
         }
       }
 
-      return true; // Don't block — we'll fall back to app-specific dir if needed
+      return true;
     }
     return true;
   }
@@ -57,40 +116,23 @@ class StorageService {
     dev.log('Getting download directory...', name: _tag);
 
     if (Platform.isAndroid) {
-      // Try public Downloads directory first
-      final publicDir = Directory('/storage/emulated/0/Download/${AppConstants.downloadFolder}');
-      dev.log('Trying public directory: ${publicDir.path}', name: _tag);
-
-      try {
-        if (!await publicDir.exists()) {
-          await publicDir.create(recursive: true);
-        }
-        // Test write access
-        final testFile = File('${publicDir.path}/.quicklify_test');
-        await testFile.writeAsString('test');
-        await testFile.delete();
-        dev.log('Public directory writable: ${publicDir.path}', name: _tag);
-        return publicDir.path;
-      } catch (e) {
-        dev.log('Public directory not writable: $e', name: _tag);
-      }
-
-      // Fallback: app-specific external directory
+      // Use app-specific directory as temp download location.
+      // Files are moved to gallery via MediaStore after download completes.
       try {
         final appExtDir = await getExternalStorageDirectory();
         if (appExtDir != null) {
-          final fallbackDir = Directory('${appExtDir.path}/${AppConstants.downloadFolder}');
-          if (!await fallbackDir.exists()) {
-            await fallbackDir.create(recursive: true);
+          final dir = Directory('${appExtDir.path}/${AppConstants.downloadFolder}');
+          if (!await dir.exists()) {
+            await dir.create(recursive: true);
           }
-          dev.log('Using app-external directory: ${fallbackDir.path}', name: _tag);
-          return fallbackDir.path;
+          dev.log('Using temp download directory: ${dir.path}', name: _tag);
+          return dir.path;
         }
       } catch (e) {
         dev.log('App-external directory failed: $e', name: _tag);
       }
 
-      // Last fallback: app documents directory
+      // Fallback: app documents directory
       final appDir = await getApplicationDocumentsDirectory();
       final lastResort = Directory('${appDir.path}/${AppConstants.downloadFolder}');
       if (!await lastResort.exists()) {

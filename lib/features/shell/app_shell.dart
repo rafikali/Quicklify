@@ -18,15 +18,25 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   int _currentIndex = 0;
+  final _homeKey = GlobalKey<HomeScreenState>();
 
   late final List<Widget> _screens;
+
+  /// Switch to the Downloads tab (called from HomeScreen after enqueue).
+  void switchToDownloads() {
+    setState(() => _currentIndex = 1);
+  }
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _screens = [
-      HomeScreen(initialUrl: widget.sharedUrl),
+      HomeScreen(
+        key: _homeKey,
+        initialUrl: widget.sharedUrl,
+        onDownloadStarted: () => switchToDownloads(),
+      ),
       const DownloadsScreen(),
       const SettingsScreen(),
     ];

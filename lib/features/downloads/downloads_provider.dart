@@ -12,6 +12,13 @@ class DownloadsProvider extends ChangeNotifier {
   List<DownloadItem> _downloads = [];
   final _uuid = const Uuid();
 
+  /// Throttle DB writes: track last write time per taskId so we only persist
+  /// progress every [_dbWriteInterval] instead of on every chunk tick.
+  static const _dbWriteInterval = Duration(seconds: 2);
+  final Map<String, DateTime> _lastDbWrite = {};
+  /// Track last progress value written to DB to avoid redundant writes.
+  final Map<String, int> _lastDbProgress = {};
+
   List<DownloadItem> get allDownloads => _downloads;
 
   List<DownloadItem> get activeDownloads =>
@@ -37,24 +44,48 @@ class DownloadsProvider extends ChangeNotifier {
     dev.log('DownloadsProvider initialized', name: _tag);
   }
 
-  void _onDownloadProgress(String taskId, int status, int progress) {
-    dev.log('Progress update: taskId=$taskId, status=$status, progress=$progress%', name: _tag);
+  void _onDownloadProgress(String taskId, int status, int progress,
+      {String? galleryPath}) {
     final index = _downloads.indexWhere((d) => d.taskId == taskId);
-    if (index == -1) {
-      dev.log('WARNING: No download found for taskId=$taskId', name: _tag);
-      return;
-    }
+    if (index == -1) return;
 
     final item = _downloads[index];
     item.status = status;
-    // progress == -1 means "keep current progress" (used when pausing)
     if (progress >= 0) {
       item.progress = progress;
     }
 
-    DownloadDao.updateStatus(item.id, status, item.progress);
-
+    // Always update UI immediately
     notifyListeners();
+
+    // Throttle DB writes: always persist terminal states (complete/failed/
+    // cancelled/paused) immediately, but for in-progress updates only write
+    // every _dbWriteInterval to avoid SQLite lock contention.
+    final isTerminal = status == 2 || status == 3 || status == 4 || status == 5;
+    final now = DateTime.now();
+
+    if (isTerminal) {
+      // Terminal state — write immediately, clean up tracking
+      DownloadDao.updateStatus(item.id, status, item.progress);
+      if (status == 2 && galleryPath != null) {
+        item.galleryPath = galleryPath;
+        DownloadDao.updateGalleryPath(item.id, galleryPath);
+      }
+      _lastDbWrite.remove(taskId);
+      _lastDbProgress.remove(taskId);
+    } else {
+      final lastWrite = _lastDbWrite[taskId];
+      final lastProgress = _lastDbProgress[taskId] ?? -1;
+      final elapsed = lastWrite == null
+          ? _dbWriteInterval // force first write
+          : now.difference(lastWrite);
+
+      if (elapsed >= _dbWriteInterval && item.progress != lastProgress) {
+        DownloadDao.updateStatus(item.id, status, item.progress);
+        _lastDbWrite[taskId] = now;
+        _lastDbProgress[taskId] = item.progress;
+      }
+    }
   }
 
   Future<void> enqueueDownload({
@@ -63,6 +94,7 @@ class DownloadsProvider extends ChangeNotifier {
     required String filename,
     required String platform,
     required String quality,
+    bool isYouTube = false,
   }) async {
     dev.log('--- ENQUEUE START ---', name: _tag);
     dev.log('sourceUrl: $sourceUrl', name: _tag);
@@ -104,6 +136,7 @@ class DownloadsProvider extends ChangeNotifier {
       final taskId = await DownloadService.enqueueDownload(
         url: downloadUrl,
         filename: filename,
+        isYouTube: isYouTube,
       );
       dev.log('DownloadService returned taskId: $taskId', name: _tag);
 
@@ -137,6 +170,7 @@ class DownloadsProvider extends ChangeNotifier {
     required String filename,
     required String platform,
     required String quality,
+    bool isYouTube = false,
   }) async {
     dev.log('--- ENQUEUE MERGE START ---', name: _tag);
     dev.log('sourceUrl: $sourceUrl', name: _tag);
@@ -174,6 +208,7 @@ class DownloadsProvider extends ChangeNotifier {
         videoUrl: videoUrl,
         audioUrl: audioUrl,
         filename: filename,
+        isYouTube: isYouTube,
       );
       dev.log('DownloadService returned taskId: $taskId', name: _tag);
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
@@ -15,7 +16,9 @@ class DownloadTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final platformColor = AppColors.getPlatformColor(item.platform);
 
-    return Container(
+    return GestureDetector(
+      onTap: item.isCompleted ? () => _openFile(context) : null,
+      child: Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: AppColors.card,
@@ -74,17 +77,18 @@ class DownloadTile extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Row(
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
                         children: [
                           _infoPill(
                             '${item.platform[0].toUpperCase()}${item.platform.substring(1)}',
                             platformColor,
                           ),
-                          const SizedBox(width: 6),
                           _infoPill('${item.quality}p', AppColors.textHint),
-                          const SizedBox(width: 6),
                           Text(
                             DateFormat.MMMd().add_jm().format(item.createdAt),
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               color: AppColors.textMuted,
                               fontSize: 11,
@@ -251,7 +255,47 @@ class DownloadTile extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
+  }
+
+  void _openFile(BuildContext context) async {
+    // Try stored gallery path first
+    if (item.galleryPath != null && item.galleryPath!.isNotEmpty) {
+      final path = item.galleryPath!;
+      // If it's a content:// URI, we can't use OpenFilex directly.
+      // Try file paths first.
+      if (!path.startsWith('content://')) {
+        final result = await OpenFilex.open(path);
+        if (result.type == ResultType.done) return;
+      }
+    }
+
+    // Fallback: try common gallery paths
+    final filename = item.filename;
+    final paths = [
+      '/storage/emulated/0/Movies/Quicklify/$filename',
+      '/storage/emulated/0/Music/Quicklify/$filename',
+      '/storage/emulated/0/Download/Quicklify/$filename',
+    ];
+
+    for (final path in paths) {
+      final result = await OpenFilex.open(path);
+      if (result.type == ResultType.done) return;
+    }
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Open from your gallery or file manager.',
+              style: TextStyle(color: AppColors.textPrimary)),
+          backgroundColor: AppColors.surfaceElevated,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        ),
+      );
+    }
   }
 
   Widget _infoPill(String text, Color color) {

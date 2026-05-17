@@ -27,6 +27,16 @@ class DownloadDao {
     await db.update('downloads', updates, where: 'id = ?', whereArgs: [id]);
   }
 
+  static Future<void> updateGalleryPath(String id, String galleryPath) async {
+    final db = await DatabaseHelper.database;
+    await db.update(
+      'downloads',
+      {'gallery_path': galleryPath},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
   static Future<void> updateTaskId(String id, String taskId) async {
     final db = await DatabaseHelper.database;
     await db.update(

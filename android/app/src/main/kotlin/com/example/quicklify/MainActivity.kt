@@ -1,17 +1,24 @@
 package com.example.quicklify
 
+import android.content.ContentValues
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMuxer
 import android.media.MediaScannerConnection
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.io.File
+import java.io.FileInputStream
 import java.nio.ByteBuffer
 
 class MainActivity : FlutterActivity() {
     private val SCANNER_CHANNEL = "com.example.quicklify/media_scanner"
     private val MUXER_CHANNEL = "com.example.quicklify/media_muxer"
+    private val GALLERY_CHANNEL = "com.example.quicklify/gallery"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -37,6 +44,34 @@ class MainActivity : FlutterActivity() {
                 }
             }
 
+        // Gallery save channel — saves file to gallery via MediaStore
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, GALLERY_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                if (call.method == "saveToGallery") {
+                    val filePath = call.argument<String>("filePath")
+                    val filename = call.argument<String>("filename")
+                    val mimeType = call.argument<String>("mimeType")
+
+                    if (filePath == null || filename == null) {
+                        result.error("INVALID_ARGUMENT", "Missing arguments", null)
+                        return@setMethodCallHandler
+                    }
+
+                    Thread {
+                        try {
+                            val uri = saveFileToGallery(filePath, filename, mimeType ?: "video/mp4")
+                            runOnUiThread { result.success(uri) }
+                        } catch (e: Exception) {
+                            runOnUiThread {
+                                result.error("GALLERY_SAVE_FAILED", e.message, null)
+                            }
+                        }
+                    }.start()
+                } else {
+                    result.notImplemented()
+                }
+            }
+
         // Media muxer channel — merges video-only + audio into a single MP4
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, MUXER_CHANNEL)
             .setMethodCallHandler { call, result ->
@@ -50,7 +85,6 @@ class MainActivity : FlutterActivity() {
                         return@setMethodCallHandler
                     }
 
-                    // Run on a background thread to avoid blocking the UI
                     Thread {
                         try {
                             mergeStreams(videoPath, audioPath, outputPath)
@@ -65,6 +99,76 @@ class MainActivity : FlutterActivity() {
                     result.notImplemented()
                 }
             }
+    }
+
+    private fun saveFileToGallery(filePath: String, filename: String, mimeType: String): String? {
+        val file = File(filePath)
+        if (!file.exists()) throw Exception("File not found: $filePath")
+
+        val isVideo = mimeType.startsWith("video/")
+        val isAudio = mimeType.startsWith("audio/")
+
+        val resolver = contentResolver
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // Android 10+ — use MediaStore API (scoped storage)
+            val collection = when {
+                isVideo -> MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+                isAudio -> MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+                else -> MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+            }
+
+            val relativePath = when {
+                isVideo -> Environment.DIRECTORY_MOVIES + "/Quicklify"
+                isAudio -> Environment.DIRECTORY_MUSIC + "/Quicklify"
+                else -> Environment.DIRECTORY_DOWNLOADS + "/Quicklify"
+            }
+
+            val values = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
+                put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+                put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
+                put(MediaStore.MediaColumns.IS_PENDING, 1)
+            }
+
+            val uri = resolver.insert(collection, values)
+                ?: throw Exception("Failed to create MediaStore entry")
+
+            resolver.openOutputStream(uri)?.use { outputStream ->
+                FileInputStream(file).use { inputStream ->
+                    inputStream.copyTo(outputStream, bufferSize = 8192)
+                }
+            } ?: throw Exception("Failed to open output stream")
+
+            // Mark as complete
+            values.clear()
+            values.put(MediaStore.MediaColumns.IS_PENDING, 0)
+            resolver.update(uri, values, null, null)
+
+            // Delete the temp file from Downloads folder
+            file.delete()
+
+            return uri.toString()
+        } else {
+            // Android 9 and below — copy to public directory and scan
+            val publicDir = when {
+                isVideo -> Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES)
+                isAudio -> Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)
+                else -> Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            }
+
+            val targetDir = File(publicDir, "Quicklify")
+            targetDir.mkdirs()
+            val targetFile = File(targetDir, filename)
+
+            file.copyTo(targetFile, overwrite = true)
+            file.delete()
+
+            // Scan so it appears in gallery
+            MediaScannerConnection.scanFile(this, arrayOf(targetFile.absolutePath), arrayOf(mimeType), null)
+
+            return targetFile.absolutePath
+        }
     }
 
     private fun mergeStreams(videoPath: String, audioPath: String, outputPath: String) {

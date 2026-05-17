@@ -183,6 +183,18 @@ class SettingsScreen extends StatelessWidget {
                 onTap: () => _showCobaltUrlEditor(context, settings),
               ),
 
+              const SizedBox(height: 10),
+              _buildSettingsTile(
+                context,
+                icon: Icons.play_circle_fill_rounded,
+                iconColor: AppColors.youtube,
+                title: 'YouTube',
+                subtitle: 'On-device extraction — no server needed',
+                subtitleColor: AppColors.success,
+                borderColor: AppColors.success.withValues(alpha: 0.2),
+                onTap: () {},
+              ),
+
               const SizedBox(height: 28),
 
               // Download preferences
@@ -226,6 +238,31 @@ class SettingsScreen extends StatelessWidget {
                 title: 'Clear Download History',
                 subtitle: 'Remove all completed downloads from history',
                 onTap: () => _confirmClearHistory(context),
+              ),
+
+              const SizedBox(height: 28),
+
+              // Appearance
+              _sectionTitle(context, 'Appearance'),
+              const SizedBox(height: 10),
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.card,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: AppColors.glassBorder),
+                ),
+                child: SwitchListTile(
+                  title: const Text('V2 Interface',
+                      style: TextStyle(color: AppColors.textPrimary)),
+                  subtitle: const Text('Modern capture-flow UI',
+                      style: TextStyle(
+                          color: AppColors.textSecondary, fontSize: 12)),
+                  value: settings.useV2UI,
+                  activeColor: AppColors.primary,
+                  onChanged: (v) => settings.setUseV2UI(v),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18)),
+                ),
               ),
 
               const SizedBox(height: 28),

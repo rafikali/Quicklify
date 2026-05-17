@@ -4,7 +4,7 @@ import 'package:path/path.dart';
 class DatabaseHelper {
   static Database? _database;
   static const String _dbName = 'quicklify.db';
-  static const int _dbVersion = 1;
+  static const int _dbVersion = 2;
 
   DatabaseHelper._();
 
@@ -21,6 +21,7 @@ class DatabaseHelper {
       path,
       version: _dbVersion,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -38,8 +39,15 @@ class DatabaseHelper {
         progress INTEGER DEFAULT 0,
         created_at INTEGER NOT NULL,
         completed_at INTEGER,
-        file_size INTEGER
+        file_size INTEGER,
+        gallery_path TEXT
       )
     ''');
+  }
+
+  static Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('ALTER TABLE downloads ADD COLUMN gallery_path TEXT');
+    }
   }
 }
