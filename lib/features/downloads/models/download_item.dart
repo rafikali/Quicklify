@@ -2,7 +2,7 @@ class DownloadItem {
   final String id;
   final String sourceUrl;
   final String downloadUrl;
-  final String filename;
+  String filename;
   final String platform;
   final String quality;
   final String? taskId; // flutter_downloader task ID
@@ -94,12 +94,13 @@ class DownloadItem {
     DateTime? completedAt,
     int? fileSize,
     String? galleryPath,
+    String? filename,
   }) {
     return DownloadItem(
       id: id,
       sourceUrl: sourceUrl,
       downloadUrl: downloadUrl,
-      filename: filename,
+      filename: filename ?? this.filename,
       platform: platform,
       quality: quality,
       taskId: taskId ?? this.taskId,

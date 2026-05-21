@@ -45,7 +45,7 @@ class DownloadsProvider extends ChangeNotifier {
   }
 
   void _onDownloadProgress(String taskId, int status, int progress,
-      {String? galleryPath}) {
+      {String? galleryPath, String? resolvedFilename}) {
     final index = _downloads.indexWhere((d) => d.taskId == taskId);
     if (index == -1) return;
 
@@ -67,9 +67,15 @@ class DownloadsProvider extends ChangeNotifier {
     if (isTerminal) {
       // Terminal state — write immediately, clean up tracking
       DownloadDao.updateStatus(item.id, status, item.progress);
-      if (status == 2 && galleryPath != null) {
-        item.galleryPath = galleryPath;
-        DownloadDao.updateGalleryPath(item.id, galleryPath);
+      if (status == 2) {
+        if (galleryPath != null) {
+          item.galleryPath = galleryPath;
+          DownloadDao.updateGalleryPath(item.id, galleryPath);
+        }
+        if (resolvedFilename != null && resolvedFilename != item.filename) {
+          item.filename = resolvedFilename;
+          DownloadDao.updateFilename(item.id, resolvedFilename);
+        }
       }
       _lastDbWrite.remove(taskId);
       _lastDbProgress.remove(taskId);

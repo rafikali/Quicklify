@@ -28,8 +28,10 @@ class DownloadService {
 
   /// Callback: 1=running, 2=complete, 3=failed, 4=paused, 5=cancelled
   /// [galleryPath] is set when status=2 (complete) with the gallery URI/path.
-  static Function(String id, int status, int progress, {String? galleryPath})?
-      onProgressUpdate;
+  /// [resolvedFilename] is set when status=2 with the actual on-disk filename
+  /// (may differ from the requested name if a collision was disambiguated).
+  static Function(String id, int status, int progress,
+      {String? galleryPath, String? resolvedFilename})? onProgressUpdate;
 
   static final Map<String, CancelToken> _cancelTokens = {};
   static final Map<String, List<CancelToken>> _chunkCancelTokens = {};
@@ -101,7 +103,8 @@ class DownloadService {
     try {
       final saveDir = await StorageService.getDownloadDirectory();
       final sanitizedName = FileUtils.sanitizeFilename(filename);
-      final savePath = '$saveDir/$sanitizedName';
+      final uniqueName = FileUtils.resolveUniqueFilename(saveDir, sanitizedName);
+      final savePath = '$saveDir/$uniqueName';
       final taskId = _uuid.v4();
       final cancelToken = CancelToken();
       _cancelTokens[taskId] = cancelToken;
@@ -109,11 +112,11 @@ class DownloadService {
       _downloadInfos[taskId] = _DownloadInfo(
         url: url,
         savePath: savePath,
-        displayName: sanitizedName,
+        displayName: uniqueName,
         isYouTube: isYouTube,
       );
 
-      _downloadFileChunked(taskId, url, savePath, sanitizedName, cancelToken,
+      _downloadFileChunked(taskId, url, savePath, uniqueName, cancelToken,
           isYouTube: isYouTube);
 
       dev.log('Enqueued with taskId: $taskId', name: _tag);
@@ -136,7 +139,8 @@ class DownloadService {
     try {
       final saveDir = await StorageService.getDownloadDirectory();
       final sanitizedName = FileUtils.sanitizeFilename(filename);
-      final savePath = '$saveDir/$sanitizedName';
+      final uniqueName = FileUtils.resolveUniqueFilename(saveDir, sanitizedName);
+      final savePath = '$saveDir/$uniqueName';
       final taskId = _uuid.v4();
       final cancelToken = CancelToken();
       _cancelTokens[taskId] = cancelToken;
@@ -145,13 +149,13 @@ class DownloadService {
         url: videoUrl,
         audioUrl: audioUrl,
         savePath: savePath,
-        displayName: sanitizedName,
+        displayName: uniqueName,
         isMerge: true,
         isYouTube: isYouTube,
       );
 
       _downloadAndMerge(
-          taskId, videoUrl, audioUrl, savePath, sanitizedName, cancelToken,
+          taskId, videoUrl, audioUrl, savePath, uniqueName, cancelToken,
           isYouTube: isYouTube);
 
       dev.log('Enqueued merge download with taskId: $taskId', name: _tag);
@@ -403,12 +407,14 @@ class DownloadService {
       }
 
       _cleanup(taskId);
-      final galleryUri = await StorageService.saveToGallery(savePath, displayName);
-      onProgressUpdate?.call(taskId, 2, 100, galleryPath: galleryUri);
+      final gallery = await StorageService.saveToGallery(savePath, displayName);
+      final finalName = gallery?.filename ?? displayName;
+      onProgressUpdate?.call(taskId, 2, 100,
+          galleryPath: gallery?.uri, resolvedFilename: finalName);
       NotificationService.showComplete(
-          taskId: taskId, filename: displayName);
+          taskId: taskId, filename: finalName);
       dev.log(
-          'Chunked download complete & saved to gallery: $displayName (${_formatSize(fileSize)})',
+          'Chunked download complete & saved to gallery: $finalName (${_formatSize(fileSize)})',
           name: _tag);
     } on DioException catch (e) {
       _chunkCancelTokens.remove(taskId);
@@ -571,12 +577,14 @@ class DownloadService {
       }
 
       _cleanup(taskId);
-      final galleryUri = await StorageService.saveToGallery(savePath, displayName);
-      onProgressUpdate?.call(taskId, 2, 100, galleryPath: galleryUri);
+      final gallery = await StorageService.saveToGallery(savePath, displayName);
+      final finalName = gallery?.filename ?? displayName;
+      onProgressUpdate?.call(taskId, 2, 100,
+          galleryPath: gallery?.uri, resolvedFilename: finalName);
       NotificationService.showComplete(
-          taskId: taskId, filename: displayName);
+          taskId: taskId, filename: finalName);
       dev.log(
-          'Download complete & saved to gallery: $displayName ($fileSize bytes)',
+          'Download complete & saved to gallery: $finalName ($fileSize bytes)',
           name: _tag);
     } on DioException catch (e) {
       if (CancelToken.isCancel(e)) {
@@ -814,12 +822,14 @@ class DownloadService {
       }
 
       _cleanup(taskId);
-      final galleryUri = await StorageService.saveToGallery(savePath, displayName);
-      onProgressUpdate?.call(taskId, 2, 100, galleryPath: galleryUri);
+      final gallery = await StorageService.saveToGallery(savePath, displayName);
+      final finalName = gallery?.filename ?? displayName;
+      onProgressUpdate?.call(taskId, 2, 100,
+          galleryPath: gallery?.uri, resolvedFilename: finalName);
       NotificationService.showComplete(
-          taskId: taskId, filename: displayName);
+          taskId: taskId, filename: finalName);
       dev.log(
-          'Merge download complete & saved to gallery: $displayName (${_formatSize(mergedSize)})',
+          'Merge download complete & saved to gallery: $finalName (${_formatSize(mergedSize)})',
           name: _tag);
     } on DioException catch (e) {
       _cleanupTempFiles([videoTmp, audioTmp]);

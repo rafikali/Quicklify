@@ -1,8 +1,10 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/url_validator.dart';
+import '../../settings/settings_provider.dart';
 
 class QualitySelector extends StatefulWidget {
   final String url;
@@ -22,9 +24,18 @@ class QualitySelector extends StatefulWidget {
 }
 
 class _QualitySelectorState extends State<QualitySelector> {
-  String _selectedQuality = '1080';
-  String _downloadMode = 'auto';
-  String _audioFormat = 'mp3';
+  late String _selectedQuality;
+  late String _downloadMode;
+  late String _audioFormat;
+
+  @override
+  void initState() {
+    super.initState();
+    final settings = context.read<SettingsProvider>();
+    _selectedQuality = settings.defaultQuality;
+    _downloadMode = settings.defaultMode;
+    _audioFormat = settings.defaultAudioFormat;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -189,6 +200,13 @@ class _QualitySelectorState extends State<QualitySelector> {
                     child: InkWell(
                       borderRadius: BorderRadius.circular(16),
                       onTap: () {
+                        // Persist the user's selection so the Settings page
+                        // reflects the most recent choice as the default.
+                        final settings = context.read<SettingsProvider>();
+                        settings.setDefaultQuality(_selectedQuality);
+                        settings.setDefaultMode(_downloadMode);
+                        settings.setDefaultAudioFormat(_audioFormat);
+
                         widget.onDownload(
                           _selectedQuality,
                           _downloadMode,

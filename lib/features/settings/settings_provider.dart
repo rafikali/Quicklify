@@ -12,6 +12,7 @@ class SettingsProvider extends ChangeNotifier {
   String _youtubeApiUrl = ApiConstants.defaultYoutubeApiUrl;
   String _youtubeApiKey = '';
   bool _useV2UI = false;
+  bool _adsEnabled = true;
 
   String get defaultQuality => _defaultQuality;
   String get defaultMode => _defaultMode;
@@ -20,6 +21,7 @@ class SettingsProvider extends ChangeNotifier {
   String get youtubeApiUrl => _youtubeApiUrl;
   String get youtubeApiKey => _youtubeApiKey;
   bool get useV2UI => _useV2UI;
+  bool get adsEnabled => _adsEnabled;
 
   Future<void> initialize() async {
     _prefs = await SharedPreferences.getInstance();
@@ -32,6 +34,13 @@ class SettingsProvider extends ChangeNotifier {
     // Force V1 as default — remove any previously saved V2 preference
     await _prefs.remove('use_v2_ui');
     _useV2UI = false;
+    _adsEnabled = _prefs.getBool('ads_enabled') ?? true;
+    notifyListeners();
+  }
+
+  Future<void> setAdsEnabled(bool value) async {
+    _adsEnabled = value;
+    await _prefs.setBool('ads_enabled', value);
     notifyListeners();
   }
 

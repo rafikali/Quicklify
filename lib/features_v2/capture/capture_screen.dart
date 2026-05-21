@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:provider/provider.dart';
 import '../../core/utils/url_validator.dart';
+import '../../core/services/ads_service.dart';
 import '../../core/services/cobalt_service.dart';
 import '../../core/services/youtube_service.dart';
 import '../../data/models/cobalt_request.dart';
@@ -55,10 +56,13 @@ class CaptureScreenState extends State<CaptureScreen>
 
   late AnimationController _pulseController;
 
+  final _interstitial = InterstitialAdHelper(frequency: 3);
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _interstitial.loadInterstitial();
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2000),
@@ -75,6 +79,7 @@ class CaptureScreenState extends State<CaptureScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _pulseController.dispose();
+    _interstitial.dispose();
     super.dispose();
   }
 
@@ -308,6 +313,11 @@ class CaptureScreenState extends State<CaptureScreen>
       _pipelineStep = 3;
     });
 
+    // Show an interstitial every Nth successful enqueue (respects ads toggle).
+    if (context.read<SettingsProvider>().adsEnabled) {
+      _interstitial.maybeShow();
+    }
+
     // Start listening for updates
     provider.addListener(_onProviderUpdate);
   }
@@ -389,7 +399,12 @@ class CaptureScreenState extends State<CaptureScreen>
       body: RainBackground(
         lineCount: _state == CaptureState.complete ? 0 : 50,
         child: SafeArea(
-          child: _buildBody(),
+          child: Column(
+            children: [
+              Expanded(child: _buildBody()),
+              const BannerAdWidget(),
+            ],
+          ),
         ),
       ),
     );

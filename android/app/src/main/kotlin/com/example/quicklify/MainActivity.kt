@@ -59,8 +59,13 @@ class MainActivity : FlutterActivity() {
 
                     Thread {
                         try {
-                            val uri = saveFileToGallery(filePath, filename, mimeType ?: "video/mp4")
-                            runOnUiThread { result.success(uri) }
+                            val saved = saveFileToGallery(filePath, filename, mimeType ?: "video/mp4")
+                            runOnUiThread {
+                                result.success(mapOf(
+                                    "uri" to saved.first,
+                                    "filename" to saved.second,
+                                ))
+                            }
                         } catch (e: Exception) {
                             runOnUiThread {
                                 result.error("GALLERY_SAVE_FAILED", e.message, null)
@@ -101,7 +106,9 @@ class MainActivity : FlutterActivity() {
             }
     }
 
-    private fun saveFileToGallery(filePath: String, filename: String, mimeType: String): String? {
+    /// Returns (uri-or-path, resolvedFilename). Resolves filename collisions
+    /// by appending " (1)", " (2)", ... before the extension.
+    private fun saveFileToGallery(filePath: String, filename: String, mimeType: String): Pair<String?, String> {
         val file = File(filePath)
         if (!file.exists()) throw Exception("File not found: $filePath")
 
@@ -124,8 +131,10 @@ class MainActivity : FlutterActivity() {
                 else -> Environment.DIRECTORY_DOWNLOADS + "/Quicklify"
             }
 
+            val resolvedName = resolveUniqueMediaStoreName(collection, relativePath, filename)
+
             val values = ContentValues().apply {
-                put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
+                put(MediaStore.MediaColumns.DISPLAY_NAME, resolvedName)
                 put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
                 put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
                 put(MediaStore.MediaColumns.IS_PENDING, 1)
@@ -148,7 +157,7 @@ class MainActivity : FlutterActivity() {
             // Delete the temp file from Downloads folder
             file.delete()
 
-            return uri.toString()
+            return Pair(uri.toString(), resolvedName)
         } else {
             // Android 9 and below — copy to public directory and scan
             val publicDir = when {
@@ -159,16 +168,65 @@ class MainActivity : FlutterActivity() {
 
             val targetDir = File(publicDir, "Quicklify")
             targetDir.mkdirs()
-            val targetFile = File(targetDir, filename)
+            val resolvedName = resolveUniqueFileName(targetDir, filename)
+            val targetFile = File(targetDir, resolvedName)
 
-            file.copyTo(targetFile, overwrite = true)
+            file.copyTo(targetFile, overwrite = false)
             file.delete()
 
             // Scan so it appears in gallery
             MediaScannerConnection.scanFile(this, arrayOf(targetFile.absolutePath), arrayOf(mimeType), null)
 
-            return targetFile.absolutePath
+            return Pair(targetFile.absolutePath, resolvedName)
         }
+    }
+
+    /// Returns a non-colliding filename for the given MediaStore [collection]
+    /// under [relativePath]. Appends " (1)", " (2)", ... before the extension.
+    private fun resolveUniqueMediaStoreName(
+        collection: android.net.Uri,
+        relativePath: String,
+        desired: String,
+    ): String {
+        val (base, ext) = splitNameAndExtension(desired)
+        // MediaStore stores RELATIVE_PATH with a trailing slash
+        val pathArg = if (relativePath.endsWith("/")) relativePath else "$relativePath/"
+
+        fun exists(name: String): Boolean {
+            val cursor = contentResolver.query(
+                collection,
+                arrayOf(MediaStore.MediaColumns._ID),
+                "${MediaStore.MediaColumns.DISPLAY_NAME}=? AND ${MediaStore.MediaColumns.RELATIVE_PATH}=?",
+                arrayOf(name, pathArg),
+                null,
+            ) ?: return false
+            cursor.use { return it.count > 0 }
+        }
+
+        if (!exists(desired)) return desired
+        var counter = 1
+        while (true) {
+            val candidate = "$base ($counter)$ext"
+            if (!exists(candidate)) return candidate
+            counter++
+        }
+    }
+
+    private fun resolveUniqueFileName(dir: File, desired: String): String {
+        if (!File(dir, desired).exists()) return desired
+        val (base, ext) = splitNameAndExtension(desired)
+        var counter = 1
+        while (true) {
+            val candidate = "$base ($counter)$ext"
+            if (!File(dir, candidate).exists()) return candidate
+            counter++
+        }
+    }
+
+    private fun splitNameAndExtension(filename: String): Pair<String, String> {
+        val lastDot = filename.lastIndexOf('.')
+        if (lastDot <= 0 || lastDot == filename.length - 1) return Pair(filename, "")
+        return Pair(filename.substring(0, lastDot), filename.substring(lastDot))
     }
 
     private fun mergeStreams(videoPath: String, audioPath: String, outputPath: String) {

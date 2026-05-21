@@ -6,7 +6,9 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/url_validator.dart';
+import '../../core/services/ads_service.dart';
 import '../../core/services/cobalt_service.dart';
+import '../../core/services/share_intent_service.dart';
 import '../../core/services/youtube_service.dart';
 import '../../data/models/cobalt_request.dart';
 import '../downloads/downloads_provider.dart';
@@ -35,10 +37,14 @@ class HomeScreenState extends State<HomeScreen>
   late AnimationController _pulseController;
   late AnimationController _ringController;
 
+  final _interstitial = InterstitialAdHelper(frequency: 3);
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    _interstitial.loadInterstitial();
 
     _rippleController = AnimationController(
       vsync: this,
@@ -55,11 +61,46 @@ class HomeScreenState extends State<HomeScreen>
       duration: const Duration(milliseconds: 8000),
     )..repeat();
 
-    if (widget.initialUrl != null) {
-      _setUrl(widget.initialUrl!);
+    ShareIntentService.onUrlReceived = (url, platform) {
+      if (!mounted) return;
+      _autoStartFromShare(url, platform);
+    };
+
+    final pendingUrl = ShareIntentService.pendingUrl;
+    final pendingPlatform = ShareIntentService.pendingPlatform;
+    if (pendingUrl != null && pendingPlatform != null) {
+      ShareIntentService.consumePending();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _autoStartFromShare(pendingUrl, pendingPlatform);
+      });
+    } else if (widget.initialUrl != null) {
+      final platform = UrlValidator.detectPlatform(widget.initialUrl!);
+      if (platform != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _autoStartFromShare(widget.initialUrl!, platform);
+        });
+      } else {
+        _setUrl(widget.initialUrl!);
+      }
     } else {
       _checkClipboard();
     }
+  }
+
+  void _autoStartFromShare(String url, String platform) {
+    if (_isLoading) return;
+    setState(() {
+      _detectedUrl = url;
+      _detectedPlatform = platform;
+    });
+    final settings = context.read<SettingsProvider>();
+    _startDownload(
+      url,
+      platform,
+      settings.defaultQuality,
+      settings.defaultMode,
+      settings.defaultAudioFormat,
+    );
   }
 
   @override
@@ -68,6 +109,7 @@ class HomeScreenState extends State<HomeScreen>
     _rippleController.dispose();
     _pulseController.dispose();
     _ringController.dispose();
+    _interstitial.dispose();
     super.dispose();
   }
 
@@ -314,6 +356,11 @@ class HomeScreenState extends State<HomeScreen>
     // Navigate to downloads tab
     widget.onDownloadStarted?.call();
 
+    // Show an interstitial every Nth successful enqueue (respects ads toggle).
+    if (context.read<SettingsProvider>().adsEnabled) {
+      _interstitial.maybeShow();
+    }
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: const Row(
@@ -345,21 +392,28 @@ class HomeScreenState extends State<HomeScreen>
     final hasLink = _detectedUrl != null && _detectedPlatform != null;
 
     return SafeArea(
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Spacer(flex: 3),
-            _buildMainButton(hasLink),
-            const SizedBox(height: 32),
-            _buildStatusText(hasLink),
-            if (hasLink) ...[
-              const SizedBox(height: 16),
-              _buildOptionsHint(),
-            ],
-            const Spacer(flex: 4),
-          ],
-        ),
+      child: Column(
+        children: [
+          Expanded(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Spacer(flex: 3),
+                  _buildMainButton(hasLink),
+                  const SizedBox(height: 32),
+                  _buildStatusText(hasLink),
+                  if (hasLink) ...[
+                    const SizedBox(height: 16),
+                    _buildOptionsHint(),
+                  ],
+                  const Spacer(flex: 4),
+                ],
+              ),
+            ),
+          ),
+          const BannerAdWidget(),
+        ],
       ),
     );
   }

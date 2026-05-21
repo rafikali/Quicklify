@@ -6,6 +6,16 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/url_validator.dart';
 import '../downloads_provider.dart';
 import '../models/download_item.dart';
+import '../video_player_screen.dart';
+
+const _videoExtensions = {'.mp4', '.mkv', '.webm', '.mov', '.m4v', '.3gp'};
+
+bool _isVideoFilename(String filename) {
+  final lower = filename.toLowerCase();
+  final dot = lower.lastIndexOf('.');
+  if (dot < 0) return false;
+  return _videoExtensions.contains(lower.substring(dot));
+}
 
 class DownloadTile extends StatelessWidget {
   final DownloadItem item;
@@ -260,26 +270,30 @@ class DownloadTile extends StatelessWidget {
   }
 
   void _openFile(BuildContext context) async {
-    // Try stored gallery path first
-    if (item.galleryPath != null && item.galleryPath!.isNotEmpty) {
-      final path = item.galleryPath!;
-      // If it's a content:// URI, we can't use OpenFilex directly.
-      // Try file paths first.
-      if (!path.startsWith('content://')) {
-        final result = await OpenFilex.open(path);
-        if (result.type == ResultType.done) return;
-      }
-    }
-
-    // Fallback: try common gallery paths
     final filename = item.filename;
-    final paths = [
+    final isVideo = _isVideoFilename(filename);
+
+    final candidates = <String>[
+      if (item.galleryPath != null && item.galleryPath!.isNotEmpty)
+        item.galleryPath!,
       '/storage/emulated/0/Movies/Quicklify/$filename',
       '/storage/emulated/0/Music/Quicklify/$filename',
       '/storage/emulated/0/Download/Quicklify/$filename',
     ];
 
-    for (final path in paths) {
+    if (isVideo) {
+      final path = candidates.first;
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => VideoPlayerScreen(path: path, title: filename),
+          fullscreenDialog: true,
+        ),
+      );
+      return;
+    }
+
+    for (final path in candidates) {
+      if (path.startsWith('content://')) continue;
       final result = await OpenFilex.open(path);
       if (result.type == ResultType.done) return;
     }

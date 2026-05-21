@@ -47,6 +47,16 @@ class DownloadDao {
     );
   }
 
+  static Future<void> updateFilename(String id, String filename) async {
+    final db = await DatabaseHelper.database;
+    await db.update(
+      'downloads',
+      {'filename': filename},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
   static Future<void> delete(String id) async {
     final db = await DatabaseHelper.database;
     await db.delete('downloads', where: 'id = ?', whereArgs: [id]);

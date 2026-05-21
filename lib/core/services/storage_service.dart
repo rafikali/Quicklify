@@ -26,8 +26,10 @@ class StorageService {
   /// Save a downloaded file to the phone's gallery (Videos/Music).
   /// On Android 10+, uses MediaStore API (scoped storage).
   /// On Android 9 and below, copies to public Movies/Music folder and scans.
-  /// Returns the gallery URI or path on success.
-  static Future<String?> saveToGallery(String filePath, String filename) async {
+  /// Returns the URI/path and the actual filename used (may differ from the
+  /// requested one if a name collision was resolved with "(1)", "(2)", ...).
+  static Future<GallerySaveResult?> saveToGallery(
+      String filePath, String filename) async {
     if (!Platform.isAndroid) return null;
 
     try {
@@ -40,8 +42,14 @@ class StorageService {
         'mimeType': mimeType,
       });
 
-      dev.log('Saved to gallery: $result', name: _tag);
-      return result as String?;
+      if (result is Map) {
+        final uri = result['uri'] as String?;
+        final resolved = result['filename'] as String? ?? filename;
+        dev.log('Saved to gallery: uri=$uri, filename=$resolved', name: _tag);
+        return GallerySaveResult(uri: uri, filename: resolved);
+      }
+      dev.log('Saved to gallery (legacy): $result', name: _tag);
+      return GallerySaveResult(uri: result as String?, filename: filename);
     } catch (e) {
       dev.log('Gallery save failed: $e — falling back to scan', name: _tag);
       // Fallback: just scan the file so it at least shows in file manager
@@ -151,4 +159,11 @@ class StorageService {
     dev.log('Download directory: ${downloadDir.path}', name: _tag);
     return downloadDir.path;
   }
+}
+
+class GallerySaveResult {
+  final String? uri;
+  final String filename;
+
+  const GallerySaveResult({required this.uri, required this.filename});
 }

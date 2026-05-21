@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0A0A0F" />
+  <meta name="description" content="Quicklify — one-tap video downloader for YouTube, TikTok, Facebook, Instagram, Twitter, Reddit and 1000+ sites. Free Android APK." />
+  <meta name="keywords" content="Quicklify, video downloader, YouTube downloader, TikTok downloader, Instagram downloader, Facebook video downloader, APK" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Quicklify — One-tap Video Downloader" />
+  <meta property="og:description" content="Download videos from YouTube, TikTok, Facebook, Instagram & 1000+ sites in seconds. Free Android APK." />
+  <meta property="og:image" content="assets/icon.png" />
+
+  <title>Quicklify — One-tap Video Downloader · Free APK</title>
+
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
+  <link rel="apple-touch-icon" href="assets/icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Animated background orbs -->
+  <div class="bg-orbs" aria-hidden="true">
+    <div class="orb orb-cyan"></div>
+    <div class="orb orb-purple"></div>
+    <div class="orb orb-pink"></div>
+  </div>
+
+  <!-- NAV -->
+  <header class="nav">
+    <a href="#" class="brand">
+      <img src="assets/icon.png" alt="Quicklify" class="brand-logo" />
+      <span class="brand-name">Quicklify</span>
+    </a>
+    <nav class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#platforms">Platforms</a>
+      <a href="#install">Install</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <a href="#download" class="btn btn-ghost btn-sm">Get APK</a>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero" id="download">
+    <div class="hero-inner">
+      <div class="hero-copy">
+        <div class="pill reveal">
+          <span class="dot"></span> v1.0.0 · Android 7.0+
+        </div>
+        <h1 class="reveal">
+          Download <span class="grad-text">any video.</span><br />
+          One tap. Zero ads in your face.
+        </h1>
+        <p class="lead reveal">
+          Quicklify pulls videos from YouTube, TikTok, Instagram, Facebook,
+          Twitter, Reddit and 1000+ other sites — straight to your gallery, in
+          the quality <em>you</em> choose.
+        </p>
+
+        <div class="cta-row reveal">
+          <a id="downloadBtn" class="btn btn-primary btn-lg" href="downloads/quicklify-latest.apk" download>
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 3v13" /><path d="m7 11 5 5 5-5" /><path d="M5 21h14" />
+            </svg>
+            <span class="btn-label">
+              <strong>Download APK</strong>
+              <small id="apkSizeLabel">Latest build · ~103 MB</small>
+            </span>
+          </a>
+          <a href="#install" class="btn btn-ghost btn-lg">How to install</a>
+        </div>
+
+        <div class="hero-meta reveal">
+          <div class="meta">
+            <div class="meta-num" id="dlCounter">0</div>
+            <div class="meta-lbl">Downloads</div>
+          </div>
+          <div class="divider"></div>
+          <div class="meta">
+            <div class="meta-num">1000+</div>
+            <div class="meta-lbl">Supported sites</div>
+          </div>
+          <div class="divider"></div>
+          <div class="meta">
+            <div class="meta-num">4K</div>
+            <div class="meta-lbl">Max quality</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phone mockup -->
+      <div class="phone reveal" aria-hidden="true">
+        <div class="phone-frame">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="mock-statusbar">
+              <span>9:41</span>
+              <span class="mock-icons">●●● ▮</span>
+            </div>
+            <div class="mock-title">
+              <img src="assets/icon.png" alt="" />
+              <div>
+                <strong>Quicklify</strong>
+                <span>Paste a link to start</span>
+              </div>
+            </div>
+            <div class="mock-input">
+              <span>🔗 https://youtu.be/dQw4w9WgXcQ</span>
+            </div>
+            <div class="mock-card">
+              <div class="mock-thumb"></div>
+              <div class="mock-meta">
+                <strong>Never Gonna Give You Up</strong>
+                <span>Rick Astley · 3:32</span>
+              </div>
+            </div>
+            <div class="mock-qualities">
+              <span class="q q-on">1080p</span>
+              <span class="q">720p</span>
+              <span class="q">MP3</span>
+            </div>
+            <div class="mock-progress">
+              <div class="mock-progress-fill"></div>
+            </div>
+            <div class="mock-progress-text">Downloading… 64%</div>
+            <button class="mock-dl">Download</button>
+          </div>
+        </div>
+        <div class="phone-glow"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="section" id="features">
+    <header class="section-head reveal">
+      <span class="eyebrow">Why Quicklify</span>
+      <h2>Built for speed, made to feel good.</h2>
+      <p>Everything you'd expect from a premium downloader — without the paywall.</p>
+    </header>
+    <div class="grid features">
+      <article class="card reveal">
+        <div class="icon-bubble" style="--c:var(--cyan)">⚡</div>
+        <h3>One-tap downloads</h3>
+        <p>Paste a link or share directly from any app. Quicklify does the rest.</p>
+      </article>
+      <article class="card reveal">
+        <div class="icon-bubble" style="--c:var(--purple)">🎯</div>
+        <h3>Pick the quality</h3>
+        <p>144p to 4K, MP4 or MP3. Choose what you actually need.</p>
+      </article>
+      <article class="card reveal">
+        <div class="icon-bubble" style="--c:var(--pink)">📡</div>
+        <h3>1000+ sites</h3>
+        <p>YouTube, TikTok, Insta, FB, X, Reddit, Vimeo, Twitch and more.</p>
+      </article>
+      <article class="card reveal">
+        <div class="icon-bubble" style="--c:var(--cyan)">🔒</div>
+        <h3>No account needed</h3>
+        <p>Zero sign-ups. Zero tracking. Your links stay on your device.</p>
+      </article>
+      <article class="card reveal">
+        <div class="icon-bubble" style="--c:var(--purple)">📂</div>
+        <h3>Smart library</h3>
+        <p>Every download is sorted, searchable and one tap away.</p>
+      </article>
+      <article class="card reveal">
+        <div class="icon-bubble" style="--c:var(--pink)">🌙</div>
+        <h3>Pure dark UI</h3>
+        <p>Designed dark from day one. Easy on the eyes, sharp on every screen.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- PLATFORMS -->
+  <section class="section" id="platforms">
+    <header class="section-head reveal">
+      <span class="eyebrow">Supported</span>
+      <h2>Works with everything you watch.</h2>
+      <p>A few of the big ones — but Quicklify handles 1000+ sites under the hood.</p>
+    </header>
+    <div class="platforms reveal">
+      <span class="chip" style="--pc:#FF0000">YouTube</span>
+      <span class="chip" style="--pc:#EE1D52">TikTok</span>
+      <span class="chip" style="--pc:#E4405F">Instagram</span>
+      <span class="chip" style="--pc:#1877F2">Facebook</span>
+      <span class="chip" style="--pc:#1DA1F2">X / Twitter</span>
+      <span class="chip" style="--pc:#FF4500">Reddit</span>
+      <span class="chip" style="--pc:#1AB7EA">Vimeo</span>
+      <span class="chip" style="--pc:#9146FF">Twitch</span>
+      <span class="chip" style="--pc:#FF5500">SoundCloud</span>
+      <span class="chip" style="--pc:#E60023">Pinterest</span>
+      <span class="chip" style="--pc:#0066DC">Dailymotion</span>
+      <span class="chip" style="--pc:#00E5FF">+ 1000 more</span>
+    </div>
+  </section>
+
+  <!-- INSTALL STEPS -->
+  <section class="section" id="install">
+    <header class="section-head reveal">
+      <span class="eyebrow">3 steps</span>
+      <h2>Install in under a minute.</h2>
+      <p>Quicklify ships as a signed APK — Google Play coming soon.</p>
+    </header>
+    <ol class="steps">
+      <li class="step reveal">
+        <div class="step-num">1</div>
+        <h3>Download the APK</h3>
+        <p>Tap the big <strong>Download APK</strong> button up top. The file is ~103 MB.</p>
+        <a class="btn btn-primary btn-sm" href="downloads/quicklify-latest.apk" download>Get APK</a>
+      </li>
+      <li class="step reveal">
+        <div class="step-num">2</div>
+        <h3>Allow install</h3>
+        <p>Android will ask you to <em>“Allow from this source”</em> the first time. One tap, done.</p>
+      </li>
+      <li class="step reveal">
+        <div class="step-num">3</div>
+        <h3>Paste &amp; download</h3>
+        <p>Open Quicklify, paste any video link, pick a quality, hit download. Watch the magic.</p>
+      </li>
+    </ol>
+  </section>
+
+  <!-- FAQ -->
+  <section class="section" id="faq">
+    <header class="section-head reveal">
+      <span class="eyebrow">Answers</span>
+      <h2>FAQ</h2>
+    </header>
+    <div class="faq">
+      <details class="reveal">
+        <summary>Is Quicklify free?</summary>
+        <p>Yes — 100% free. No subscriptions, no paywalls, no "premium tier."</p>
+      </details>
+      <details class="reveal">
+        <summary>Is it safe?</summary>
+        <p>The APK is built straight from this source repo and signed. No telemetry, no analytics SDKs, no account servers.</p>
+      </details>
+      <details class="reveal">
+        <summary>Why isn't it on Google Play?</summary>
+        <p>Play Store policies restrict video-download apps. Sideloading the APK keeps the app free and unrestricted.</p>
+      </details>
+      <details class="reveal">
+        <summary>Does it work on iPhone?</summary>
+        <p>Not yet — Quicklify is Android-only today. iOS support is on the roadmap.</p>
+      </details>
+      <details class="reveal">
+        <summary>Where do my downloads go?</summary>
+        <p>Straight into your phone's Downloads / Movies folder, fully visible in your Gallery.</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- FINAL CTA -->
+  <section class="final-cta">
+    <div class="final-inner reveal">
+      <h2>Stop screen-recording. Start downloading.</h2>
+      <p>Quicklify is ready. Are you?</p>
+      <a class="btn btn-primary btn-lg" href="downloads/quicklify-latest.apk" download>
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3v13" /><path d="m7 11 5 5 5-5" /><path d="M5 21h14" />
+        </svg>
+        Download for Android
+      </a>
+      <small class="mono">SHA-256 verified · signed build · ~103 MB</small>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="brand">
+        <img src="assets/icon.png" alt="" class="brand-logo" />
+        <span class="brand-name">Quicklify</span>
+      </div>
+      <p>© <span id="year"></span> Quicklify. Made with caffeine and dark mode.</p>
+      <div class="footer-links">
+        <a href="#features">Features</a>
+        <a href="#install">Install</a>
+        <a href="#faq">FAQ</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Toast -->
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="script.js" defer></script>
+</body>
+</html>
