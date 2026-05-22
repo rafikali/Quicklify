@@ -105,6 +105,16 @@ windows/build/
 # Web
 /web/build/
 
+# Build artifacts (APKs, IPAs, etc.) — too large for git
+*.apk
+*.aab
+*.ipa
+*.app
+*.dmg
+website/downloads/*.apk
+website/downloads/*.aab
+website/downloads/*.ipa
+
 # Exceptions to above rules.
 !**/ios/**/default.mode1v3
 !**/ios/**/default.mode2v3
