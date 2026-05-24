@@ -1,148 +1,137 @@
 import 'dart:developer' as dev;
-import 'package:flutter/foundation.dart';
+import 'package:applovin_max/applovin_max.dart';
 import 'package:flutter/material.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
+
+import '../../features/premium/premium_provider.dart';
 import '../../features/settings/settings_provider.dart';
+import 'premium_service.dart';
 
 const String _tag = 'AdsService';
 
 class AdUnitIds {
-  static const String _testBanner = 'ca-app-pub-3940256099942544/6300978111';
-  static const String _testInterstitial = 'ca-app-pub-3940256099942544/1033173712';
-  static const String _prodBanner = 'ca-app-pub-3985125214088479/3480381901';
-  static const String _prodInterstitial = 'ca-app-pub-3985125214088479/5437599476';
-
-  static String get banner => kDebugMode ? _testBanner : _prodBanner;
-  static String get interstitial => kDebugMode ? _testInterstitial : _prodInterstitial;
+  // Paste from https://dash.applovin.com (Account → Keys, then MAX → Ad Units).
+  static const String sdkKey = 'YOUR_APPLOVIN_SDK_KEY_HERE';
+  static const String banner = 'YOUR_APPLOVIN_BANNER_AD_UNIT_ID_HERE';
+  static const String interstitial = 'YOUR_APPLOVIN_INTERSTITIAL_AD_UNIT_ID_HERE';
 }
 
-/// Reusable banner widget. Returns SizedBox.shrink() if ads disabled in settings
-/// or if the banner failed to load.
 class BannerAdWidget extends StatefulWidget {
-  final AdSize size;
-
-  const BannerAdWidget({super.key, this.size = AdSize.banner});
+  const BannerAdWidget({super.key});
 
   @override
   State<BannerAdWidget> createState() => _BannerAdWidgetState();
 }
 
 class _BannerAdWidgetState extends State<BannerAdWidget> {
-  BannerAd? _ad;
   bool _loaded = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  void _load() {
-    final ad = BannerAd(
-      adUnitId: AdUnitIds.banner,
-      size: widget.size,
-      request: const AdRequest(),
-      listener: BannerAdListener(
-        onAdLoaded: (_) {
-          if (!mounted) return;
-          setState(() => _loaded = true);
-        },
-        onAdFailedToLoad: (ad, error) {
-          dev.log('Banner failed: $error', name: _tag);
-          ad.dispose();
-        },
-      ),
-    );
-    ad.load();
-    _ad = ad;
-  }
-
-  @override
-  void dispose() {
-    _ad?.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     final adsEnabled = context.select<SettingsProvider, bool>((s) => s.adsEnabled);
-    if (!adsEnabled || !_loaded || _ad == null) {
+
+    // Premium-gate inline (diversified verify site #1).
+    // Both the Provider (cheap read) AND the service-level cache are checked —
+    // a patch of one doesn't kill the other.
+    final isPremium = context.select<PremiumProvider, bool>((p) => p.isPremium);
+    final premiumCached = PremiumService.instance.isPremiumSync();
+
+    if (!adsEnabled || isPremium || premiumCached) {
       return const SizedBox.shrink();
     }
     return SizedBox(
-      width: _ad!.size.width.toDouble(),
-      height: _ad!.size.height.toDouble(),
-      child: AdWidget(ad: _ad!),
+      height: _loaded ? 50 : 0,
+      child: MaxAdView(
+        adUnitId: AdUnitIds.banner,
+        adFormat: AdFormat.banner,
+        listener: AdViewAdListener(
+          onAdLoadedCallback: (ad) {
+            if (!mounted) return;
+            setState(() => _loaded = true);
+          },
+          onAdLoadFailedCallback: (adUnitId, error) {
+            dev.log('Banner failed: ${error.message}', name: _tag);
+          },
+          onAdClickedCallback: (ad) {},
+          onAdExpandedCallback: (ad) {},
+          onAdCollapsedCallback: (ad) {},
+        ),
+      ),
     );
   }
 }
 
-/// Manages a single interstitial ad: preload, show, reload after dismissal.
-/// Tracks an internal counter so callers can fire `maybeShow()` every Nth event.
 class InterstitialAdHelper {
-  InterstitialAd? _ad;
-  bool _loading = false;
+  static bool _listenerRegistered = false;
+  static bool _isLoaded = false;
+  static bool _isLoading = false;
+
+  int frequency;
   int _counter = 0;
 
-  /// Show an interstitial only every [frequency] calls (default 3).
-  int frequency;
-
-  InterstitialAdHelper({this.frequency = 3});
-
-  void loadInterstitial() {
-    if (_ad != null || _loading) return;
-    _loading = true;
-    InterstitialAd.load(
-      adUnitId: AdUnitIds.interstitial,
-      request: const AdRequest(),
-      adLoadCallback: InterstitialAdLoadCallback(
-        onAdLoaded: (ad) {
-          _ad = ad;
-          _loading = false;
-          ad.fullScreenContentCallback = FullScreenContentCallback(
-            onAdDismissedFullScreenContent: (ad) {
-              ad.dispose();
-              _ad = null;
-              loadInterstitial();
-            },
-            onAdFailedToShowFullScreenContent: (ad, error) {
-              dev.log('Interstitial show failed: $error', name: _tag);
-              ad.dispose();
-              _ad = null;
-              loadInterstitial();
-            },
-          );
-        },
-        onAdFailedToLoad: (error) {
-          dev.log('Interstitial load failed: $error', name: _tag);
-          _loading = false;
-          _ad = null;
-        },
-      ),
-    );
+  InterstitialAdHelper({this.frequency = 3}) {
+    _ensureListener();
   }
 
-  /// Show the ad if it's loaded. Returns true if shown.
+  static void _ensureListener() {
+    if (_listenerRegistered) return;
+    _listenerRegistered = true;
+    AppLovinMAX.setInterstitialListener(InterstitialListener(
+      onAdLoadedCallback: (ad) {
+        _isLoaded = true;
+        _isLoading = false;
+      },
+      onAdLoadFailedCallback: (adUnitId, error) {
+        _isLoaded = false;
+        _isLoading = false;
+        dev.log('Interstitial load failed: ${error.message}', name: _tag);
+      },
+      onAdDisplayedCallback: (ad) {},
+      onAdDisplayFailedCallback: (ad, error) {
+        _isLoaded = false;
+        dev.log('Interstitial show failed: ${error.message}', name: _tag);
+        _load();
+      },
+      onAdClickedCallback: (ad) {},
+      onAdHiddenCallback: (ad) {
+        _isLoaded = false;
+        _load();
+      },
+    ));
+  }
+
+  static void _load() {
+    if (_isLoaded || _isLoading) return;
+    // Don't even preload interstitials for premium users — saves bandwidth
+    // and avoids leaking the user to the ad SDK.
+    if (PremiumService.instance.isPremiumSync()) return;
+    _isLoading = true;
+    AppLovinMAX.loadInterstitial(AdUnitIds.interstitial);
+  }
+
+  void loadInterstitial() => _load();
+
+  /// Show the loaded interstitial. Returns true if shown.
+  /// Premium-gate inline (diversified verify site #2).
   bool showInterstitialIfReady() {
-    if (_ad == null) {
-      loadInterstitial();
+    if (PremiumService.instance.isPremiumSync()) return false;
+    if (!_isLoaded) {
+      _load();
       return false;
     }
-    _ad!.show();
+    AppLovinMAX.showInterstitial(AdUnitIds.interstitial);
     return true;
   }
 
-  /// Increments the counter and shows the ad only every [frequency]th call.
-  /// Returns true if an ad was shown.
+  /// Throttled show: only every [frequency]-th call.
+  /// Premium-gate inline (also short-circuits the counter to avoid
+  /// "interstitial about to fire next call" surprise when user upgrades).
   bool maybeShow() {
+    if (PremiumService.instance.isPremiumSync()) return false;
     _counter++;
     if (_counter % frequency != 0) return false;
     return showInterstitialIfReady();
   }
 
-  void dispose() {
-    _ad?.dispose();
-    _ad = null;
-  }
+  void dispose() {}
 }

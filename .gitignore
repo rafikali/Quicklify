@@ -120,3 +120,21 @@ website/downloads/*.ipa
 !**/ios/**/default.mode2v3
 !**/ios/**/default.pbxuser
 !**/ios/**/default.perspectivev3
+
+# Firebase
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+functions/node_modules/
+functions/lib/
+functions/.env
+functions/.env.local
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+*-debug.log
+
+# Local Ed25519 keypair (never commit; private key goes to Firebase Secret Manager)
+secrets/
+*.pem
+*.key

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Network security config for Quicklify.
+
+  The base-config applies to all domains: standard system + user certificates
+  are trusted (so MITM proxies like Charles still work for the user, and
+  Cobalt / Piped / YouTube endpoints keep working over plain TLS).
+
+  The domain-config sections add CERTIFICATE PINNING for the endpoints that
+  carry premium-token traffic. A network attacker who installs a system CA
+  on a user's device can otherwise MITM the issuePet response and swap in a
+  forged PET — pinning blocks that.
+
+  **Pin maintenance** (important):
+  - Pin to the Google CA chain ROOTS, not leaf certs, so they survive cert
+    rotation. The hashes below cover Google's standard certificate chain.
+  - When Firebase / Functions migrate to a new root (rare, but happens), add
+    the new hash here AHEAD of the migration to avoid bricking auth.
+  - Tools to extract a pin: `openssl s_client -connect <host>:443 -showcerts`
+    → take the appropriate root cert → `openssl x509 -in cert.pem -pubkey -noout
+    | openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | base64`
+-->
+<network-security-config>
+
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Pin Firebase auth + Firestore + Functions to the GTS Root R1 / R4 chain. -->
+    <domain-config>
+        <!-- Firebase Auth (identitytoolkit) -->
+        <domain includeSubdomains="true">googleapis.com</domain>
+        <!-- Cloud Functions -->
+        <domain includeSubdomains="true">cloudfunctions.net</domain>
+        <!-- Firestore -->
+        <domain includeSubdomains="true">firestore.googleapis.com</domain>
+
+        <trust-anchors>
+            <!-- system trust is still allowed — pinning supplements, doesn't replace -->
+            <certificates src="system" />
+        </trust-anchors>
+
+        <pin-set>
+            <!-- Google Trust Services GTS Root R1 (current Google services root) -->
+            <pin digest="SHA-256">hxqRlPTu1bMS/0DITB1SSu0vd4u/8l8TjPgfaAp63Gc=</pin>
+            <!-- Google Trust Services GTS Root R4 (fallback) -->
+            <pin digest="SHA-256">jVeMZAuwUlw9YuvFXLpAxBpDP3Js0H3pjGqHpNvVQ7Y=</pin>
+            <!-- GlobalSign Root CA - R2 (legacy backup; Google retains chains to it) -->
+            <pin digest="SHA-256">iie1VXtL7HzAMF+/PVPR9xzT80kQxdZeJ+zduCB3uj0=</pin>
+        </pin-set>
+    </domain-config>
+
+</network-security-config>

@@ -12,6 +12,7 @@
         android:label="Quicklify"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:requestLegacyExternalStorage="true">
 
         <activity
@@ -51,6 +52,11 @@
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-3985125214088479~6820861111"/>
+
+        <!-- AppLovin MAX SDK key. Get it at https://dash.applovin.com (Account → Keys). -->
+        <meta-data
+            android:name="applovin.sdk.key"
+            android:value="YOUR_APPLOVIN_SDK_KEY_HERE"/>
     </application>
     <queries>
         <intent>

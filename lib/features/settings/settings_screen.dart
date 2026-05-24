@@ -4,6 +4,9 @@ import 'package:fluttertoast/fluttertoast.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../downloads/downloads_provider.dart';
+import '../premium/premium_provider.dart';
+import '../premium/screens/premium_screen.dart';
+import '../premium/widgets/premium_badge.dart';
 import 'settings_provider.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -45,8 +48,17 @@ class SettingsScreen extends StatelessWidget {
                           color: AppColors.textPrimary,
                         ),
                   ),
+                  const Spacer(),
+                  const PremiumBadge(),
                 ],
               ),
+              const SizedBox(height: 28),
+
+              // Premium
+              _sectionTitle(context, 'Account'),
+              const SizedBox(height: 10),
+              _PremiumTile(),
+
               const SizedBox(height: 28),
 
               // Download preferences
@@ -450,6 +462,94 @@ class SettingsScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Tile shown in Settings → Account that opens the premium screen.
+/// Subtitle reflects current premium state.
+class _PremiumTile extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<PremiumProvider>(
+      builder: (context, premium, _) {
+        final signedIn = premium.isSignedIn;
+        final isPremium = premium.isPremium;
+
+        final title = !signedIn
+            ? 'Unlock Premium'
+            : (isPremium ? 'Premium active' : 'Free tier');
+        final subtitle = !signedIn
+            ? 'Remove ads. Sign in with Google.'
+            : (isPremium
+                ? 'Manage account & devices'
+                : 'Manage account & devices');
+        final iconColor = isPremium ? AppColors.primary : AppColors.textSecondary;
+
+        return InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const PremiumScreen()),
+          ),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: isPremium
+                    ? AppColors.primary.withValues(alpha: 0.3)
+                    : AppColors.glassBorder,
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    isPremium
+                        ? Icons.workspace_premium_rounded
+                        : Icons.lock_outline_rounded,
+                    color: iconColor,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded,
+                    color: AppColors.textSecondary),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

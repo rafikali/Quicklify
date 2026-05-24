@@ -47,11 +47,26 @@ dependencies:
   url_launcher: ^6.3.1
   open_filex: ^4.7.0
 
-  # Ads (AdMob)
+  # Ads (AdMob — kept for future mediation through MAX)
   google_mobile_ads: ^5.2.0
+
+  # Ads (AppLovin MAX — active network; accepts sideloaded apps)
+  applovin_max: ^4.0.0
 
   # In-app video playback
   video_player: ^2.9.2
+
+  # Firebase + Google Sign-In (premium feature, Option C — no Cloud Functions)
+  firebase_core: ^3.8.0
+  firebase_auth: ^5.3.4
+  google_sign_in: ^6.2.2
+  cloud_firestore: ^5.5.0
+
+  # Premium foundation
+  flutter_secure_storage: ^9.2.2
+  crypto: ^3.0.6
+  device_info_plus: ^11.2.0
+  package_info_plus: ^8.1.0
 
 dev_dependencies:
   flutter_test:

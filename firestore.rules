@@ -1,0 +1,83 @@
+rules_version = '2';
+
+// Quicklify Firestore Security Rules (Option C — no Cloud Functions).
+//
+// Trust boundaries:
+//   - End users: signed in via Firebase Auth. May read/write their own
+//     profile + own devices. May read their own subscriptions but NEVER write
+//     them. May read nothing else.
+//   - Admins: rows in the `admins/{uid}` collection. May read everything;
+//     writes to subscriptions happen via the admin panel using the Firebase
+//     Admin SDK with a service account (which bypasses these rules).
+//   - Service account (admin panel server actions): bypasses rules.
+//
+// The "admins can't write subscriptions via client SDK" is intentional —
+// it forces all premium grants through the admin panel's server actions,
+// which write audit_log atomically.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.disabled == false;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // profiles: user can create + read + update own profile.
+    // Update restricted to non-sensitive fields (displayName, photoUrl,
+    // lastSeenAt). `banned` and `notes` only writable by service account.
+    match /profiles/{uid} {
+      allow create: if isOwner(uid)
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.banned == false;
+      allow read:   if isOwner(uid) || isAdmin();
+      allow update: if isOwner(uid)
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['displayName', 'photoUrl', 'lastSeenAt', 'email']);
+      allow delete: if false;
+
+      // Devices: user manages their own. Soft cap: client enforces 3-device
+      // limit via a query before creating; sophisticated users can bypass
+      // (acceptable trade-off for Option C — admin can see + revoke).
+      match /devices/{deviceId} {
+        allow read:   if isOwner(uid) || isAdmin();
+        // User may create + update own device docs. Revocation = setting
+        // revokedAt; that's an update.
+        allow create: if isOwner(uid);
+        allow update: if isOwner(uid)
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['lastSeenAt', 'revokedAt', 'deviceName']);
+        allow delete: if isOwner(uid);
+      }
+
+      // Subscriptions: read-only for owner. Written ONLY by admin panel
+      // server actions using the Admin SDK (which bypasses rules).
+      match /subscriptions/{subId} {
+        allow read:  if isOwner(uid) || isAdmin();
+        allow write: if false;
+      }
+    }
+
+    // Admins collection: admins can see who other admins are. Writes happen
+    // out-of-band (Firebase Console / manual Firestore edit).
+    match /admins/{uid} {
+      allow read:  if isAdmin();
+      allow write: if false;
+    }
+
+    // Audit log: admins can read; nobody writes via client SDK.
+    match /audit_log/{id} {
+      allow read:           if isAdmin();
+      allow create, update, delete: if false;
+    }
+  }
+}
