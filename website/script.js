@@ -23,16 +23,23 @@
   $$('.reveal').forEach((el) => io.observe(el));
 
   // ---- Download counter (localStorage-backed, looks alive) ----
-  const COUNTER_KEY = 'quicklify_dl_seed';
+  // Anchored at 1M+ so the social-proof number reads as a mature product.
+  const COUNTER_KEY = 'quicklify_dl_seed_v2';
+  const COUNTER_BASE = 1_000_000; // floor — we always show "1M+" or higher
   const counterEl = $('#dlCounter');
 
   function getSeed() {
     let seed = parseInt(localStorage.getItem(COUNTER_KEY) || '0', 10);
-    if (!seed) {
-      // Start at a believable number — based on days since "launch"
+    if (!seed || seed < COUNTER_BASE) {
       const launch = new Date('2026-01-01').getTime();
       const days = Math.max(1, Math.floor((Date.now() - launch) / 86400000));
-      seed = 1280 + days * 47 + Math.floor(Math.random() * 80);
+      // 1M + slow daily growth + small jitter so each visitor sees a
+      // believable, slightly different "alive" number.
+      seed =
+        COUNTER_BASE +
+        180_000 +
+        days * 470 +
+        Math.floor(Math.random() * 800);
       localStorage.setItem(COUNTER_KEY, String(seed));
     }
     return seed;
@@ -42,16 +49,30 @@
     localStorage.setItem(COUNTER_KEY, String(next));
     return next;
   }
+  function formatCompact(n) {
+    if (n >= 1_000_000) {
+      const m = n / 1_000_000;
+      // 1 decimal place, drop trailing .0  →  "1.2M+" / "2M+"
+      return m.toFixed(1).replace(/\.0$/, '') + 'M+';
+    }
+    if (n >= 1_000) {
+      const k = n / 1_000;
+      return k.toFixed(1).replace(/\.0$/, '') + 'K+';
+    }
+    return String(n);
+  }
   function animateCounter(target) {
     if (!counterEl) return;
-    const duration = 1400;
+    const duration = 1600;
     const start = performance.now();
-    const from = 0;
-    const fmt = new Intl.NumberFormat();
+    // Start animation from ~85% of target so the final 15% climbs into view —
+    // looks alive but never undersells the 1M+ headline.
+    const from = Math.floor(target * 0.85);
     const tick = (now) => {
       const p = Math.min(1, (now - start) / duration);
       const eased = 1 - Math.pow(1 - p, 3);
-      counterEl.textContent = fmt.format(Math.floor(from + (target - from) * eased));
+      const value = Math.floor(from + (target - from) * eased);
+      counterEl.textContent = formatCompact(value);
       if (p < 1) requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);

@@ -30,6 +30,7 @@ function Nav() {
           Quicklify Admin
         </Link>
         <Link href="/users" className="text-muted hover:text-text text-sm">Users</Link>
+        <Link href="/plans" className="text-muted hover:text-text text-sm">Plans</Link>
         <Link href="/audit" className="text-muted hover:text-text text-sm">Audit log</Link>
         <form action={signOutAction} className="ml-auto">
           <button

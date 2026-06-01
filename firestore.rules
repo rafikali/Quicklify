@@ -79,5 +79,13 @@ service cloud.firestore {
       allow read:           if isAdmin();
       allow create, update, delete: if false;
     }
+
+    // Plans catalog: world-readable (the mobile app fetches the price list
+    // without requiring sign-in). Writes happen ONLY via the admin panel
+    // server actions (Admin SDK bypasses these rules).
+    match /plans/{planId} {
+      allow read:  if true;
+      allow write: if false;
+    }
   }
 }

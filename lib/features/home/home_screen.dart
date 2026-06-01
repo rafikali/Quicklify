@@ -12,6 +12,7 @@ import '../../core/services/share_intent_service.dart';
 import '../../core/services/youtube_service.dart';
 import '../../data/models/cobalt_request.dart';
 import '../downloads/downloads_provider.dart';
+import '../premium/widgets/remove_ads_cta.dart';
 import '../settings/settings_provider.dart';
 import 'widgets/quality_selector.dart';
 
@@ -394,6 +395,7 @@ class HomeScreenState extends State<HomeScreen>
     return SafeArea(
       child: Column(
         children: [
+          const RemoveAdsCta(),
           Expanded(
             child: Center(
               child: Column(

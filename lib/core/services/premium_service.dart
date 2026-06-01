@@ -43,6 +43,13 @@ class PremiumService {
   final _db = FirebaseFirestore.instance;
 
   bool _isPremiumCache = false;
+  DateTime? _expiresAtCache;
+  String? _activePlanIdCache;
+  // Offset between Firestore server time and the device clock. Re-synced
+  // on each profile bootstrap + refresh. Lets us detect (and reject) device
+  // clock manipulation aimed at extending premium.
+  int _serverOffsetMs = 0;
+  bool _serverOffsetSynced = false;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _subSub;
   StreamSubscription<User?>? _authSub;
 
@@ -76,22 +83,61 @@ class PremiumService {
   /// Cached premium flag — safe to call from build methods.
   bool isPremiumSync() => _isPremiumCache;
 
+  /// When the active subscription expires (null for lifetime or no sub).
+  DateTime? get expiresAt => _expiresAtCache;
+
+  /// The plan id the active subscription was granted from, if recorded
+  /// (older grants from before plans existed will be null).
+  String? get activePlanId => _activePlanIdCache;
+
+  /// Best-known current time using Firestore-anchored clock. Falls back to
+  /// the device clock until the first sync completes (rare — sync happens
+  /// during sign-in bootstrap). All premium-related time math should call
+  /// this instead of [DateTime.now] to neutralize device clock tampering.
+  DateTime serverNow() =>
+      DateTime.now().add(Duration(milliseconds: _serverOffsetMs));
+
+  /// True once we've successfully synced with Firestore's server clock at
+  /// least once this session. Useful for UI that wants to suppress
+  /// time-sensitive displays before the first sync.
+  bool get hasServerTime => _serverOffsetSynced;
+
   /// Async variant. Equivalent to [isPremiumSync] for Option C since the
   /// Firestore listener keeps the cache up to date.
   Future<bool> isPremium() async => _isPremiumCache;
 
-  /// Force-refresh: just bumps lastSeenAt and re-reads. The snapshot listener
-  /// stays live, so this is mostly user-affordance ("Refresh status" button).
+  /// Force-refresh: bumps lastSeenAt, re-syncs the server clock, then
+  /// re-evaluates the most recent subscription docs against the fresh time.
+  /// The snapshot listener stays live, so this is mostly user-affordance
+  /// ("Refresh status" button).
   Future<void> refresh() async {
     final uid = AuthService.currentUser?.uid;
     if (uid == null) return;
+    final profileRef = _db.collection('profiles').doc(uid);
     try {
-      await _db.collection('profiles').doc(uid).update({
-        'lastSeenAt': FieldValue.serverTimestamp(),
-      });
+      await _syncServerTime(profileRef);
     } catch (e) {
-      dev.log('refresh: lastSeenAt update failed: $e', name: _tag);
+      dev.log('refresh: server-time sync failed: $e', name: _tag);
     }
+    // Re-run live/expired check with the fresh server clock.
+    _reEvaluate(_lastSubDocs);
+  }
+
+  /// Writes lastSeenAt with FieldValue.serverTimestamp, reads it back from
+  /// the server (NOT the cache), and computes the offset between server
+  /// time and the device clock. Round-trip error is ~ RTT/2; for "days
+  /// remaining" UX that's negligible. Defeats the "user rewinds phone
+  /// clock to extend premium" attack — TLS protects against MITM.
+  Future<void> _syncServerTime(DocumentReference<Map<String, dynamic>> ref) async {
+    final beforeMs = DateTime.now().millisecondsSinceEpoch;
+    await ref.update({'lastSeenAt': FieldValue.serverTimestamp()});
+    final snap = await ref.get(const GetOptions(source: Source.server));
+    final ts = snap.data()?['lastSeenAt'];
+    if (ts is! Timestamp) return;
+    final afterMs = DateTime.now().millisecondsSinceEpoch;
+    final midpointMs = (beforeMs + afterMs) ~/ 2;
+    _serverOffsetMs = ts.toDate().millisecondsSinceEpoch - midpointMs;
+    _serverOffsetSynced = true;
   }
 
   // -----------------------------------------------------------------------
@@ -115,16 +161,7 @@ class PremiumService {
         .snapshots()
         .listen(
       (snap) {
-        final now = DateTime.now();
-        final hasActive = snap.docs.any((d) {
-          final data = d.data();
-          if (data['tier'] != 'premium') return false;
-          final endsAt = data['endsAt'];
-          if (endsAt == null) return true; // lifetime
-          if (endsAt is Timestamp) return endsAt.toDate().isAfter(now);
-          return false;
-        });
-        _updateCache(hasActive);
+        _reEvaluate(snap.docs);
       },
       onError: (e) {
         dev.log('subscription listener error: $e', name: _tag);
@@ -132,18 +169,47 @@ class PremiumService {
     );
   }
 
+  /// Snapshot of the most recent subscription docs from the listener — kept
+  /// so we can re-run the live/expired check after [_syncServerTime] updates
+  /// the offset (the listener itself only re-fires when documents change).
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> _lastSubDocs = const [];
+
+  void _reEvaluate(
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
+    _lastSubDocs = docs;
+    final now = serverNow();
+    DateTime? expiresAt;
+    String? activePlanId;
+    final hasActive = docs.any((d) {
+      final data = d.data();
+      if (data['tier'] != 'premium') return false;
+      final endsAt = data['endsAt'];
+      final live = endsAt == null ||
+          (endsAt is Timestamp && endsAt.toDate().isAfter(now));
+      if (live) {
+        expiresAt = endsAt is Timestamp ? endsAt.toDate() : null;
+        activePlanId = data['planId'] as String?;
+      }
+      return live;
+    });
+    _updateCache(hasActive, expiresAt, activePlanId);
+  }
+
   Future<void> _onSignedOut() async {
     await _subSub?.cancel();
     _subSub = null;
     await _storage.delete(key: _deviceIdKey);
-    _updateCache(false);
+    _updateCache(false, null, null);
   }
 
-  void _updateCache(bool premium) {
-    if (_isPremiumCache != premium) {
-      _isPremiumCache = premium;
-      _changeController.add(null);
-    }
+  void _updateCache(bool premium, DateTime? expiresAt, String? planId) {
+    final changed = _isPremiumCache != premium ||
+        _expiresAtCache != expiresAt ||
+        _activePlanIdCache != planId;
+    _isPremiumCache = premium;
+    _expiresAtCache = expiresAt;
+    _activePlanIdCache = planId;
+    if (changed) _changeController.add(null);
   }
 
   // -----------------------------------------------------------------------
@@ -176,6 +242,16 @@ class PremiumService {
       }
 
       await _ensureDeviceRow(uid);
+
+      // Capture Firestore server clock offset so premium expiry can't be
+      // gamed by changing the device clock. Best-effort — failure leaves
+      // us trusting the device clock (matches old behavior).
+      try {
+        await _syncServerTime(profileRef);
+        _reEvaluate(_lastSubDocs);
+      } catch (e) {
+        dev.log('server-time sync failed: $e', name: _tag);
+      }
     } catch (e) {
       dev.log('ensureProfileAndDevice failed: $e', name: _tag);
     }

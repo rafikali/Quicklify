@@ -10,6 +10,7 @@ import '../../core/services/youtube_service.dart';
 import '../../data/models/cobalt_request.dart';
 import '../../features/downloads/downloads_provider.dart';
 import '../../features/downloads/models/download_item.dart';
+import '../../features/premium/widgets/remove_ads_cta.dart';
 import '../../features/settings/settings_provider.dart';
 import '../theme/flux_theme.dart';
 import '../widgets/rain_background.dart';
@@ -401,6 +402,7 @@ class CaptureScreenState extends State<CaptureScreen>
         child: SafeArea(
           child: Column(
             children: [
+              const RemoveAdsCta(),
               Expanded(child: _buildBody()),
               const BannerAdWidget(),
             ],

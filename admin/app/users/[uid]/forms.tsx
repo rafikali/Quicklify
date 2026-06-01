@@ -8,9 +8,36 @@ import {
   revokePremiumAction,
 } from '../../actions';
 
-export function GrantPremiumForm({ targetUid }: { targetUid: string }) {
+export interface GrantPlanOption {
+  id: string;
+  name: string;
+  durationDays: number;
+  priceInr: number;
+  currency: string;
+  sortOrder: number;
+}
+
+interface GrantSelection {
+  planId: string | null; // null = manual override (lifetime / custom)
+  durationDays: number | null;
+  priceInr: number | null;
+}
+
+export function GrantPremiumForm({
+  targetUid,
+  plans,
+}: {
+  targetUid: string;
+  plans: GrantPlanOption[];
+}) {
   const [pending, start] = useTransition();
-  const [duration, setDuration] = useState<number | null>(365);
+  const [selection, setSelection] = useState<GrantSelection>(() => {
+    if (plans.length > 0) {
+      const p = plans[Math.floor(plans.length / 2)];
+      return { planId: p.id, durationDays: p.durationDays, priceInr: p.priceInr };
+    }
+    return { planId: null, durationDays: 365, priceInr: null };
+  });
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -21,7 +48,13 @@ export function GrantPremiumForm({ targetUid }: { targetUid: string }) {
         setError(null);
         start(async () => {
           try {
-            await grantPremiumAction(targetUid, duration, note);
+            await grantPremiumAction(
+              targetUid,
+              selection.durationDays,
+              note,
+              selection.planId,
+              selection.priceInr
+            );
           } catch (err) {
             setError(err instanceof Error ? err.message : String(err));
           }
@@ -29,22 +62,72 @@ export function GrantPremiumForm({ targetUid }: { targetUid: string }) {
       }}
       className="space-y-3"
     >
-      <div className="flex gap-2">
-        {[30, 90, 365, null].map((d) => (
-          <button
-            type="button"
-            key={String(d)}
-            onClick={() => setDuration(d)}
-            className={`px-3 py-1.5 rounded text-sm border ${
-              duration === d
-                ? 'bg-primary border-primary text-white'
-                : 'border-border text-muted hover:text-text'
-            }`}
-          >
-            {d === null ? 'Lifetime' : `${d} days`}
-          </button>
-        ))}
+      {plans.length === 0 ? (
+        <div className="bg-surface border border-border rounded p-3 text-sm text-muted">
+          No plans defined yet. Add some in{' '}
+          <a href="/plans" className="text-primary hover:underline">
+            Plans
+          </a>
+          , or use the manual durations below.
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {plans.map((p) => {
+            const active = selection.planId === p.id;
+            return (
+              <button
+                type="button"
+                key={p.id}
+                onClick={() =>
+                  setSelection({
+                    planId: p.id,
+                    durationDays: p.durationDays,
+                    priceInr: p.priceInr,
+                  })
+                }
+                className={`px-3 py-1.5 rounded text-sm border ${
+                  active
+                    ? 'bg-primary border-primary text-white'
+                    : 'border-border text-muted hover:text-text'
+                }`}
+              >
+                {p.name} · {p.currency} {p.priceInr} · {p.durationDays}d
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2 items-center">
+        <span className="text-xs text-muted uppercase tracking-wide">
+          Or manual:
+        </span>
+        {[30, 90, 365, null].map((d) => {
+          const active =
+            selection.planId === null && selection.durationDays === d;
+          return (
+            <button
+              type="button"
+              key={String(d)}
+              onClick={() =>
+                setSelection({
+                  planId: null,
+                  durationDays: d,
+                  priceInr: null,
+                })
+              }
+              className={`px-3 py-1.5 rounded text-sm border ${
+                active
+                  ? 'bg-primary border-primary text-white'
+                  : 'border-border text-muted hover:text-text'
+              }`}
+            >
+              {d === null ? 'Lifetime' : `${d} days`}
+            </button>
+          );
+        })}
       </div>
+
       <input
         value={note}
         onChange={(e) => setNote(e.target.value)}

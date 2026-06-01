@@ -1,0 +1,58 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Brand gradient: cyan -> purple -> pink lift -->
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#00E5FF"/>
+      <stop offset="0.55" stop-color="#7C4DFF"/>
+      <stop offset="1" stop-color="#FF4081"/>
+    </linearGradient>
+    <!-- Subtle top highlight -->
+    <linearGradient id="hl" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.22"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <!-- Inner shadow under glyph for depth -->
+    <radialGradient id="vig" cx="50%" cy="68%" r="65%">
+      <stop offset="0.55" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.18"/>
+    </radialGradient>
+    <!-- Soft white glow around glyph -->
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="9" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Rounded square base -->
+  <rect x="0" y="0" width="512" height="512" rx="112" ry="112" fill="url(#bg)"/>
+  <!-- Depth vignette -->
+  <rect x="0" y="0" width="512" height="512" rx="112" ry="112" fill="url(#vig)"/>
+  <!-- Top highlight -->
+  <rect x="0" y="0" width="512" height="512" rx="112" ry="112" fill="url(#hl)"/>
+
+  <!-- DOWNLOAD GLYPH — single cohesive shape.
+       Vertical shaft + solid chevron arrowhead + tray bar.
+       Drawn as one path with rounded line joins for a confident silhouette. -->
+  <g filter="url(#glow)">
+    <!-- Shaft + arrowhead as one stroked path with butt-cap shaft and tip merged -->
+    <path
+      d="
+        M 256 112
+        L 256 322
+        M 144 260
+        L 256 380
+        L 368 260
+      "
+      fill="none"
+      stroke="#ffffff"
+      stroke-width="64"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+    <!-- Tray bar (download surface) -->
+    <rect x="124" y="404" width="264" height="48" rx="20" fill="#ffffff"/>
+  </g>
+</svg>

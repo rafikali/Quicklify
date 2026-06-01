@@ -19,7 +19,10 @@ type AuditAction =
   | 'grant_premium'
   | 'revoke_premium'
   | 'revoke_device'
-  | 'ban_user';
+  | 'ban_user'
+  | 'create_plan'
+  | 'update_plan'
+  | 'delete_plan';
 
 interface AuditInput {
   action: AuditAction;
@@ -70,7 +73,9 @@ export async function signOutAction(): Promise<void> {
 export async function grantPremiumAction(
   targetUid: string,
   durationDays: number | null,
-  note?: string
+  note?: string,
+  planId?: string | null,
+  priceInr?: number | null
 ): Promise<void> {
   const adminUid = await requireAdmin();
   const { db } = firebaseAdmin();
@@ -105,6 +110,8 @@ export async function grantPremiumAction(
       sourceRef: adminUid,
       createdAt: FieldValue.serverTimestamp(),
       active: true,
+      planId: planId ?? null,
+      priceInr: priceInr ?? null,
     });
     return { newId: newRef.id, supersededIds: ids };
   });
@@ -118,11 +125,109 @@ export async function grantPremiumAction(
       subscriptionId: newId,
       durationDays,
       endsAt: endsAt?.toMillis() ?? null,
+      planId: planId ?? null,
+      priceInr: priceInr ?? null,
       note: note ?? '',
     },
   });
 
   revalidatePath(`/users/${targetUid}`);
+}
+
+// ---------- plans CRUD ----------------------------------------------------
+
+export interface PlanInput {
+  name: string;
+  durationDays: number;
+  priceInr: number;
+  currency?: string;
+  sortOrder?: number;
+  active?: boolean;
+  popular?: boolean;
+  tagline?: string;
+}
+
+function validatePlan(input: PlanInput): void {
+  if (!input.name || input.name.trim().length < 1) {
+    throw new Error('Plan name is required');
+  }
+  if (!Number.isFinite(input.durationDays) || input.durationDays < 1) {
+    throw new Error('Duration must be a positive integer (days)');
+  }
+  if (!Number.isFinite(input.priceInr) || input.priceInr < 0) {
+    throw new Error('Price must be zero or positive');
+  }
+}
+
+export async function createPlanAction(input: PlanInput): Promise<string> {
+  const adminUid = await requireAdmin();
+  validatePlan(input);
+  const { db } = firebaseAdmin();
+  const ref = await db.collection('plans').add({
+    name: input.name.trim(),
+    durationDays: Math.floor(input.durationDays),
+    priceInr: Math.floor(input.priceInr),
+    currency: (input.currency ?? 'Rs').trim(),
+    sortOrder: input.sortOrder ?? 0,
+    active: input.active ?? true,
+    popular: input.popular ?? false,
+    tagline: input.tagline?.trim() || null,
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  await writeAudit({
+    action: 'create_plan',
+    actorAdminUid: adminUid,
+    targetUserUid: ref.id,
+    afterState: { ...input, planId: ref.id },
+  });
+  revalidatePath('/plans');
+  return ref.id;
+}
+
+export async function updatePlanAction(
+  planId: string,
+  input: PlanInput
+): Promise<void> {
+  const adminUid = await requireAdmin();
+  validatePlan(input);
+  const { db } = firebaseAdmin();
+  const ref = db.collection('plans').doc(planId);
+  const before = (await ref.get()).data() ?? null;
+  await ref.update({
+    name: input.name.trim(),
+    durationDays: Math.floor(input.durationDays),
+    priceInr: Math.floor(input.priceInr),
+    currency: (input.currency ?? 'Rs').trim(),
+    sortOrder: input.sortOrder ?? 0,
+    active: input.active ?? true,
+    popular: input.popular ?? false,
+    tagline: input.tagline?.trim() || null,
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  await writeAudit({
+    action: 'update_plan',
+    actorAdminUid: adminUid,
+    targetUserUid: planId,
+    beforeState: before ?? {},
+    afterState: { ...input, planId },
+  });
+  revalidatePath('/plans');
+}
+
+export async function deletePlanAction(planId: string): Promise<void> {
+  const adminUid = await requireAdmin();
+  const { db } = firebaseAdmin();
+  const ref = db.collection('plans').doc(planId);
+  const before = (await ref.get()).data() ?? null;
+  await ref.delete();
+  await writeAudit({
+    action: 'delete_plan',
+    actorAdminUid: adminUid,
+    targetUserUid: planId,
+    beforeState: before ?? {},
+  });
+  revalidatePath('/plans');
 }
 
 export async function revokePremiumAction(

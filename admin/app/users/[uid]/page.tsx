@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { firebaseAdmin } from '@/lib/firebase-admin';
 import { getCurrentAdminUid } from '@/lib/admin-auth';
-import { GrantPremiumForm, RevokePremiumForm, RevokeDeviceButton, BanUserForm } from './forms';
+import { GrantPremiumForm, RevokePremiumForm, RevokeDeviceButton, BanUserForm, type GrantPlanOption } from './forms';
 
 interface UserDetail {
   uid: string;
@@ -42,7 +42,10 @@ export default async function UserDetailPage({
   const adminUid = await getCurrentAdminUid();
   if (!adminUid) redirect('/login');
   const { uid } = await params;
-  const user = await loadUser(uid);
+  const [user, planOptions] = await Promise.all([
+    loadUser(uid),
+    loadPlanOptions(),
+  ]);
   if (!user) notFound();
 
   return (
@@ -86,7 +89,7 @@ export default async function UserDetailPage({
         ) : (
           <div>
             <p className="text-muted text-sm mb-3">No active premium subscription.</p>
-            <GrantPremiumForm targetUid={user.uid} />
+            <GrantPremiumForm targetUid={user.uid} plans={planOptions} />
           </div>
         )}
       </Section>
@@ -220,4 +223,25 @@ async function loadUser(uid: string): Promise<UserDetail | null> {
     devices,
     audit,
   };
+}
+
+async function loadPlanOptions(): Promise<GrantPlanOption[]> {
+  const { db } = firebaseAdmin();
+  const snap = await db
+    .collection('plans')
+    .where('active', '==', true)
+    .get();
+  const rows: GrantPlanOption[] = snap.docs.map((d) => {
+    const data = d.data();
+    return {
+      id: d.id,
+      name: (data.name as string) ?? d.id,
+      durationDays: (data.durationDays as number) ?? 0,
+      priceInr: (data.priceInr as number) ?? 0,
+      currency: (data.currency as string) ?? 'Rs',
+      sortOrder: (data.sortOrder as number) ?? 0,
+    };
+  });
+  rows.sort((a, b) => a.sortOrder - b.sortOrder || a.priceInr - b.priceInr);
+  return rows;
 }
