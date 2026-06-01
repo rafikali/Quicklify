@@ -16,6 +16,7 @@ class NotificationService {
   static int _nextId = 1000;
 
   static Future<void> initialize() async {
+    if (!Platform.isAndroid) return;
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
     const initSettings = InitializationSettings(android: androidInit);
     await _plugin.initialize(initSettings);
