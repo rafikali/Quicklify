@@ -136,6 +136,137 @@
     });
   });
 
+  // ---- Animated walkthrough ("See it in action") ----
+  (function initDemo() {
+    const screen = $('.demo-screen');
+    if (!screen) return;
+
+    const stepEls = $$('.demo-step', screen.closest('.demo'));
+    const typedEl = $('.demo-typed', screen);
+    const pctEl = $('.demo-pct', screen);
+    const subEl = $('.demo-sub', screen);
+    const tap = $('.demo-tap', screen);
+    const replayBtn = $('#demoReplay');
+
+    const URL_STR = 'https://youtu.be/dQw4w9WgXcQ';
+    let runId = 0;
+
+    const sleep = (ms) =>
+      new Promise((res) => setTimeout(res, ms));
+
+    function setStep(n) {
+      screen.dataset.step = String(n);
+      for (const el of stepEls) {
+        const s = parseInt(el.dataset.step, 10);
+        el.classList.toggle('active', s === n);
+        el.classList.toggle('done', s < n && n > 0);
+      }
+    }
+
+    function tapAt(x, y) {
+      tap.style.setProperty('--tap-x', x);
+      tap.style.setProperty('--tap-y', y);
+      tap.classList.remove('go');
+      // Restart the CSS animation reliably.
+      void tap.offsetWidth;
+      tap.classList.add('go');
+    }
+
+    async function typeUrl(myId) {
+      typedEl.textContent = '';
+      for (let i = 1; i <= URL_STR.length; i++) {
+        if (myId !== runId) return;
+        typedEl.textContent = URL_STR.slice(0, i);
+        await sleep(26 + Math.random() * 22);
+      }
+    }
+
+    async function tickProgress(myId, durationMs) {
+      const start = performance.now();
+      while (true) {
+        if (myId !== runId) return;
+        const now = performance.now();
+        const p = Math.min(1, (now - start) / durationMs);
+        pctEl.textContent = `Downloading… ${Math.floor(p * 100)}%`;
+        if (p >= 1) return;
+        await sleep(60);
+      }
+    }
+
+    async function run() {
+      const myId = ++runId;
+
+      // Reset
+      setStep(0);
+      typedEl.textContent = '';
+      pctEl.textContent = 'Ready';
+      subEl.textContent = 'Paste any link to start';
+      await sleep(650);
+      if (myId !== runId) return;
+
+      // 1. Clipboard sheet drops in
+      setStep(1);
+      subEl.textContent = 'Tap "Paste" to use the copied link';
+      await sleep(1500);
+      if (myId !== runId) return;
+      tapAt('86%', '17%'); // Paste button top-right
+      await sleep(380);
+      if (myId !== runId) return;
+
+      // 2. URL types itself in
+      setStep(2);
+      subEl.textContent = 'Fetching video…';
+      await typeUrl(myId);
+      await sleep(450);
+      if (myId !== runId) return;
+
+      // 3. Card + qualities slide in, tap 1080p
+      setStep(3);
+      subEl.textContent = '1080p selected';
+      await sleep(850);
+      if (myId !== runId) return;
+      tapAt('21%', '70%');
+      await sleep(450);
+      if (myId !== runId) return;
+
+      // 4. Tap Download → progress fills
+      setStep(4);
+      subEl.textContent = 'Downloading 1080p MP4…';
+      tapAt('50%', '93%');
+      await tickProgress(myId, 1900);
+      if (myId !== runId) return;
+
+      // 5. Success
+      setStep(5);
+      subEl.textContent = 'Saved to your Gallery 🎉';
+      await sleep(2400);
+      if (myId !== runId) return;
+
+      // Loop forever while in view
+      run();
+    }
+
+    function stop() {
+      runId++; // Any in-flight chain bails on its next tick.
+    }
+
+    // Auto-play when scrolled in, pause when scrolled out.
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) run();
+          else stop();
+        }
+      },
+      { threshold: 0.35 },
+    );
+    io.observe(screen);
+
+    if (replayBtn) {
+      replayBtn.addEventListener('click', () => run());
+    }
+  })();
+
   // ---- Subtle parallax on the phone mockup ----
   const phone = $('.phone-frame');
   if (phone && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
