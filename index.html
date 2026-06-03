@@ -39,6 +39,7 @@
     <nav class="nav-links">
       <a href="#features">Features</a>
       <a href="#platforms">Platforms</a>
+      <a href="#how">Demo</a>
       <a href="#install">Install</a>
       <a href="#faq">FAQ</a>
     </nav>
@@ -225,6 +226,132 @@
         <p>Open Quicklify, paste any video link, pick a quality, hit download. Watch the magic.</p>
       </li>
     </ol>
+  </section>
+
+  <!-- ANIMATED WALKTHROUGH -->
+  <section class="section" id="how">
+    <header class="section-head reveal">
+      <span class="eyebrow">See it in action</span>
+      <h2>From link to gallery — in 4 taps.</h2>
+      <p>This is exactly how Quicklify feels on your phone. Press Replay to watch it again.</p>
+    </header>
+    <div class="demo reveal">
+      <div class="demo-phone">
+        <div class="phone-frame demo-frame">
+          <div class="phone-notch"></div>
+          <div class="phone-screen demo-screen" data-step="0">
+            <div class="mock-statusbar">
+              <span>9:41</span>
+              <span class="mock-icons">●●● ▮</span>
+            </div>
+            <div class="mock-title">
+              <img src="assets/icon.png" alt="" />
+              <div>
+                <strong>Quicklify</strong>
+                <span class="demo-sub">Paste any link to start</span>
+              </div>
+            </div>
+
+            <!-- Clipboard notification (step 1) -->
+            <div class="demo-clipboard">
+              <div class="cb-icon">📋</div>
+              <div class="cb-body">
+                <small>Link copied from YouTube</small>
+                <span class="cb-url">https://youtu.be/dQw4w9WgXcQ</span>
+              </div>
+              <button class="cb-paste" type="button">Paste</button>
+            </div>
+
+            <!-- URL input -->
+            <div class="mock-input demo-input">
+              <span class="demo-typed"></span><span class="demo-caret"></span>
+            </div>
+
+            <!-- Video card -->
+            <div class="mock-card demo-card">
+              <div class="mock-thumb"></div>
+              <div class="mock-meta">
+                <strong>Never Gonna Give You Up</strong>
+                <span>Rick Astley · 3:32</span>
+              </div>
+            </div>
+
+            <!-- Qualities -->
+            <div class="mock-qualities demo-qualities">
+              <span class="q">1080p</span>
+              <span class="q">720p</span>
+              <span class="q">MP3</span>
+            </div>
+
+            <!-- Progress -->
+            <div class="mock-progress demo-progress">
+              <div class="mock-progress-fill demo-fill"></div>
+            </div>
+            <div class="mock-progress-text demo-pct">Ready</div>
+
+            <!-- Download button -->
+            <button class="mock-dl demo-dl" type="button">Download</button>
+
+            <!-- Tap-pulse (JS positions it) -->
+            <span class="demo-tap" aria-hidden="true"></span>
+
+            <!-- Success overlay (step 5) -->
+            <div class="demo-success" aria-hidden="true">
+              <div class="check-circle">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <strong>Saved to Gallery</strong>
+              <span>1080p · 24.6 MB · 0:42</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="demo-side">
+        <ol class="demo-steps">
+          <li class="demo-step" data-step="1">
+            <span class="d-num">1</span>
+            <div>
+              <strong>Copy any video link</strong>
+              <small>YouTube, TikTok, Insta — anything from 1000+ sites.</small>
+            </div>
+          </li>
+          <li class="demo-step" data-step="2">
+            <span class="d-num">2</span>
+            <div>
+              <strong>Open Quicklify, paste the link</strong>
+              <small>Quicklify spots the link in your clipboard the moment you open the app.</small>
+            </div>
+          </li>
+          <li class="demo-step" data-step="3">
+            <span class="d-num">3</span>
+            <div>
+              <strong>Pick the quality you want</strong>
+              <small>1080p, 720p, MP3 — pick what you actually need.</small>
+            </div>
+          </li>
+          <li class="demo-step" data-step="4">
+            <span class="d-num">4</span>
+            <div>
+              <strong>Tap Download — done.</strong>
+              <small>The file lands straight in your phone's Gallery.</small>
+            </div>
+          </li>
+        </ol>
+        <div class="demo-controls">
+          <button id="demoReplay" class="btn btn-ghost btn-sm" type="button">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 12a9 9 0 1 0 3-6.7" />
+              <path d="M3 4v5h5" />
+            </svg>
+            Replay
+          </button>
+          <a href="#download" class="btn btn-primary btn-sm">Get the APK</a>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- FAQ -->
