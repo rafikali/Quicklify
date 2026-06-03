@@ -19,7 +19,7 @@
   <link rel="apple-touch-icon" href="assets/icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -94,42 +94,37 @@
         </div>
       </div>
 
-      <!-- Phone mockup -->
+      <!-- Phone mockup: static "Link detected" snapshot of the real app -->
       <div class="phone reveal" aria-hidden="true">
-        <div class="phone-frame">
+        <div class="phone-frame ql-frame">
           <div class="phone-notch"></div>
-          <div class="phone-screen">
+          <div class="phone-screen ql-screen" data-state="hero">
             <div class="mock-statusbar">
               <span>9:41</span>
               <span class="mock-icons">●●● ▮</span>
             </div>
-            <div class="mock-title">
-              <img src="assets/icon.png" alt="" />
-              <div>
-                <strong>Quicklify</strong>
-                <span>Paste a link to start</span>
+            <div class="ql-state ql-state-link ql-state-static">
+              <div class="ql-wordmark ql-wordmark-sm">QUICKLIFY</div>
+              <div class="ql-tagline">Share anything. Quicklify handles the rest.</div>
+              <div class="ql-link-card">
+                <div class="ql-check-badge">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M9 12l2 2 4-4"/>
+                  </svg>
+                </div>
+                <div class="ql-link-body">
+                  <strong>Link detected</strong>
+                  <span class="ql-url"><span class="ql-url-typed">https://youtu.be/dQw4w9WgXcQ</span></span>
+                </div>
               </div>
+              <button class="ql-capture-btn" type="button">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M13 2L4.5 14h6L9 22l8.5-12h-6L13 2z"/>
+                </svg>
+                Capture Stream
+              </button>
             </div>
-            <div class="mock-input">
-              <span>🔗 https://youtu.be/dQw4w9WgXcQ</span>
-            </div>
-            <div class="mock-card">
-              <div class="mock-thumb"></div>
-              <div class="mock-meta">
-                <strong>Never Gonna Give You Up</strong>
-                <span>Rick Astley · 3:32</span>
-              </div>
-            </div>
-            <div class="mock-qualities">
-              <span class="q q-on">1080p</span>
-              <span class="q">720p</span>
-              <span class="q">MP3</span>
-            </div>
-            <div class="mock-progress">
-              <div class="mock-progress-fill"></div>
-            </div>
-            <div class="mock-progress-text">Downloading… 64%</div>
-            <button class="mock-dl">Download</button>
           </div>
         </div>
         <div class="phone-glow"></div>
@@ -228,83 +223,127 @@
     </ol>
   </section>
 
-  <!-- ANIMATED WALKTHROUGH -->
+  <!-- ANIMATED WALKTHROUGH (mirrors the real CaptureScreen flow) -->
   <section class="section" id="how">
     <header class="section-head reveal">
       <span class="eyebrow">See it in action</span>
-      <h2>From link to gallery — in 4 taps.</h2>
-      <p>This is exactly how Quicklify feels on your phone. Press Replay to watch it again.</p>
+      <h2>Copy. Capture. Captured.</h2>
+      <p>Exactly what the app looks like on your phone — idle, link detected, pipeline, parallel download, done.</p>
     </header>
     <div class="demo reveal">
       <div class="demo-phone">
-        <div class="phone-frame demo-frame">
+        <div class="phone-frame ql-frame">
           <div class="phone-notch"></div>
-          <div class="phone-screen demo-screen" data-step="0">
+          <div class="phone-screen ql-screen" data-state="0">
             <div class="mock-statusbar">
               <span>9:41</span>
               <span class="mock-icons">●●● ▮</span>
             </div>
-            <div class="mock-title">
-              <img src="assets/icon.png" alt="" />
-              <div>
-                <strong>Quicklify</strong>
-                <span class="demo-sub">Paste any link to start</span>
+
+            <!-- State 0: Idle -->
+            <div class="ql-state ql-state-idle">
+              <div class="ql-wordmark">QUICKLIFY</div>
+              <div class="ql-tagline">Share anything. Quicklify handles the rest.</div>
+              <div class="ql-idle-hint">Copy a video link to get started</div>
+            </div>
+
+            <!-- State 1: Link detected -->
+            <div class="ql-state ql-state-link">
+              <div class="ql-wordmark ql-wordmark-sm">QUICKLIFY</div>
+              <div class="ql-tagline">Share anything. Quicklify handles the rest.</div>
+              <div class="ql-link-card">
+                <div class="ql-check-badge">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M9 12l2 2 4-4"/>
+                  </svg>
+                </div>
+                <div class="ql-link-body">
+                  <strong>Link detected</strong>
+                  <span class="ql-url"><span class="ql-url-typed"></span><span class="ql-url-caret"></span></span>
+                </div>
+              </div>
+              <button class="ql-capture-btn" type="button">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M13 2L4.5 14h6L9 22l8.5-12h-6L13 2z"/>
+                </svg>
+                Capture Stream
+              </button>
+            </div>
+
+            <!-- State 2: Extracting (pipeline) -->
+            <div class="ql-state ql-state-extract">
+              <div class="ql-radar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10"/>
+                  <circle cx="12" cy="12" r="6"/>
+                  <circle cx="12" cy="12" r="2" fill="currentColor"/>
+                  <line x1="12" y1="12" x2="20" y2="6"/>
+                </svg>
+              </div>
+              <div class="ql-big-title" id="qlExtractTitle">Detecting media source</div>
+              <div class="ql-big-sub">Automatic pipeline active</div>
+              <div class="ql-pipeline">
+                <div class="ql-pipe" data-pipe="0"><span class="ql-pipe-dot"></span>Detect</div>
+                <div class="ql-pipe" data-pipe="1"><span class="ql-pipe-dot"></span>Capture</div>
+                <div class="ql-pipe" data-pipe="2"><span class="ql-pipe-dot"></span>Merge</div>
+                <div class="ql-pipe" data-pipe="3"><span class="ql-pipe-dot"></span>Optimize</div>
               </div>
             </div>
 
-            <!-- Clipboard notification (step 1) -->
-            <div class="demo-clipboard">
-              <div class="cb-icon">📋</div>
-              <div class="cb-body">
-                <small>Link copied from YouTube</small>
-                <span class="cb-url">https://youtu.be/dQw4w9WgXcQ</span>
+            <!-- State 3: Downloading (circular ring + parallel bars) -->
+            <div class="ql-state ql-state-download">
+              <div class="ql-ring">
+                <svg viewBox="0 0 100 100" aria-hidden="true">
+                  <circle class="ql-ring-track" cx="50" cy="50" r="44"/>
+                  <circle class="ql-ring-bar" cx="50" cy="50" r="44"/>
+                </svg>
+                <div class="ql-ring-pct">0%</div>
               </div>
-              <button class="cb-paste" type="button">Paste</button>
-            </div>
-
-            <!-- URL input -->
-            <div class="mock-input demo-input">
-              <span class="demo-typed"></span><span class="demo-caret"></span>
-            </div>
-
-            <!-- Video card -->
-            <div class="mock-card demo-card">
-              <div class="mock-thumb"></div>
-              <div class="mock-meta">
-                <strong>Never Gonna Give You Up</strong>
-                <span>Rick Astley · 3:32</span>
+              <div class="ql-big-title">Streaming media</div>
+              <div class="ql-big-sub">Parallel pipeline active</div>
+              <div class="ql-streams">
+                <span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span>
               </div>
+              <div class="ql-streams-pill">8 parallel streams</div>
             </div>
 
-            <!-- Qualities -->
-            <div class="mock-qualities demo-qualities">
-              <span class="q">1080p</span>
-              <span class="q">720p</span>
-              <span class="q">MP3</span>
+            <!-- State 4: Captured (complete) -->
+            <div class="ql-state ql-state-complete">
+              <div class="ql-confetti" aria-hidden="true">
+                <span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span>
+                <span></span><span></span>
+              </div>
+              <div class="ql-check-big">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M5 13l4 4L19 7"/>
+                </svg>
+              </div>
+              <div class="ql-captured">Captured</div>
+              <div class="ql-video-card">
+                <div class="ql-video-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="3" y="6" width="14" height="12" rx="2"/>
+                    <path d="M17 10l4-2v8l-4-2z"/>
+                  </svg>
+                </div>
+                <div class="ql-video-body">
+                  <strong>Never Gonna Give You Up</strong>
+                  <span>1080p · 24.6 MB</span>
+                </div>
+              </div>
+              <button class="ql-new-capture" type="button">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M13 2L4.5 14h6L9 22l8.5-12h-6L13 2z"/>
+                </svg>
+                New Capture
+              </button>
             </div>
-
-            <!-- Progress -->
-            <div class="mock-progress demo-progress">
-              <div class="mock-progress-fill demo-fill"></div>
-            </div>
-            <div class="mock-progress-text demo-pct">Ready</div>
-
-            <!-- Download button -->
-            <button class="mock-dl demo-dl" type="button">Download</button>
 
             <!-- Tap-pulse (JS positions it) -->
             <span class="demo-tap" aria-hidden="true"></span>
-
-            <!-- Success overlay (step 5) -->
-            <div class="demo-success" aria-hidden="true">
-              <div class="check-circle">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <strong>Saved to Gallery</strong>
-              <span>1080p · 24.6 MB · 0:42</span>
-            </div>
           </div>
         </div>
       </div>
@@ -321,22 +360,22 @@
           <li class="demo-step" data-step="2">
             <span class="d-num">2</span>
             <div>
-              <strong>Open Quicklify, paste the link</strong>
-              <small>Quicklify spots the link in your clipboard the moment you open the app.</small>
+              <strong>Open Quicklify — link auto-detected</strong>
+              <small>No paste, no typing. Quicklify reads your clipboard the moment it opens.</small>
             </div>
           </li>
           <li class="demo-step" data-step="3">
             <span class="d-num">3</span>
             <div>
-              <strong>Pick the quality you want</strong>
-              <small>1080p, 720p, MP3 — pick what you actually need.</small>
+              <strong>Tap "Capture Stream"</strong>
+              <small>Detect → Capture → Merge → Optimize. 8 parallel streams under the hood.</small>
             </div>
           </li>
           <li class="demo-step" data-step="4">
             <span class="d-num">4</span>
             <div>
-              <strong>Tap Download — done.</strong>
-              <small>The file lands straight in your phone's Gallery.</small>
+              <strong>Saved to your Gallery 🎉</strong>
+              <small>Confetti, done. Tap "New Capture" to grab another.</small>
             </div>
           </li>
         </ol>

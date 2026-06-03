@@ -136,30 +136,33 @@
     });
   });
 
-  // ---- Animated walkthrough ("See it in action") ----
+  // ---- Animated walkthrough — mirrors the real CaptureScreen flow ----
   (function initDemo() {
-    const screen = $('.demo-screen');
+    const screen = $('.ql-screen[data-state="0"]');
     if (!screen) return;
 
     const stepEls = $$('.demo-step', screen.closest('.demo'));
-    const typedEl = $('.demo-typed', screen);
-    const pctEl = $('.demo-pct', screen);
-    const subEl = $('.demo-sub', screen);
+    const typedEl = $('.ql-url-typed', screen);
+    const extractTitleEl = $('#qlExtractTitle', screen);
+    const pipeEls = $$('.ql-pipe', screen);
+    const ringBar = $('.ql-ring-bar', screen);
+    const ringPct = $('.ql-ring-pct', screen);
+    const streamSpans = $$('.ql-streams span', screen);
     const tap = $('.demo-tap', screen);
     const replayBtn = $('#demoReplay');
 
     const URL_STR = 'https://youtu.be/dQw4w9WgXcQ';
+    const RING_CIRCUMFERENCE = 276.46; // 2π * r(44)
     let runId = 0;
 
-    const sleep = (ms) =>
-      new Promise((res) => setTimeout(res, ms));
+    const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 
-    function setStep(n) {
-      screen.dataset.step = String(n);
+    function setState(state, step) {
+      screen.dataset.state = String(state);
       for (const el of stepEls) {
         const s = parseInt(el.dataset.step, 10);
-        el.classList.toggle('active', s === n);
-        el.classList.toggle('done', s < n && n > 0);
+        el.classList.toggle('active', s === step);
+        el.classList.toggle('done', s < step);
       }
     }
 
@@ -167,8 +170,7 @@
       tap.style.setProperty('--tap-x', x);
       tap.style.setProperty('--tap-y', y);
       tap.classList.remove('go');
-      // Restart the CSS animation reliably.
-      void tap.offsetWidth;
+      void tap.offsetWidth; // restart animation
       tap.classList.add('go');
     }
 
@@ -181,76 +183,94 @@
       }
     }
 
-    async function tickProgress(myId, durationMs) {
+    function setPipeline(activeIdx) {
+      for (const el of pipeEls) {
+        const i = parseInt(el.dataset.pipe, 10);
+        el.classList.toggle('active', i === activeIdx);
+        el.classList.toggle('done', i < activeIdx);
+      }
+    }
+
+    function setRingProgress(p) {
+      ringBar.style.strokeDashoffset = String(RING_CIRCUMFERENCE * (1 - p));
+      ringPct.textContent = `${Math.floor(p * 100)}%`;
+      const lit = Math.ceil(p * streamSpans.length);
+      streamSpans.forEach((s, i) => s.classList.toggle('on', i < lit));
+    }
+
+    async function tickRing(myId, durationMs) {
+      setRingProgress(0);
       const start = performance.now();
       while (true) {
         if (myId !== runId) return;
-        const now = performance.now();
-        const p = Math.min(1, (now - start) / durationMs);
-        pctEl.textContent = `Downloading… ${Math.floor(p * 100)}%`;
+        const p = Math.min(1, (performance.now() - start) / durationMs);
+        setRingProgress(p);
         if (p >= 1) return;
-        await sleep(60);
+        await sleep(40);
       }
     }
 
     async function run() {
       const myId = ++runId;
 
-      // Reset
-      setStep(0);
+      // Reset transient bits
       typedEl.textContent = '';
-      pctEl.textContent = 'Ready';
-      subEl.textContent = 'Paste any link to start';
-      await sleep(650);
-      if (myId !== runId) return;
+      setPipeline(-1);
+      setRingProgress(0);
 
-      // 1. Clipboard sheet drops in
-      setStep(1);
-      subEl.textContent = 'Tap "Paste" to use the copied link';
+      // 0. Idle (step 1)
+      setState(0, 1);
       await sleep(1500);
       if (myId !== runId) return;
-      tapAt('86%', '17%'); // Paste button top-right
-      await sleep(380);
-      if (myId !== runId) return;
 
-      // 2. URL types itself in
-      setStep(2);
-      subEl.textContent = 'Fetching video…';
+      // 1. Link detected — URL types into the card (step 2)
+      setState(1, 2);
+      await sleep(450);
+      if (myId !== runId) return;
       await typeUrl(myId);
-      await sleep(450);
+      if (myId !== runId) return;
+      await sleep(900);
+      if (myId !== runId) return;
+      tapAt('50%', '78%'); // Capture Stream button
+      await sleep(420);
       if (myId !== runId) return;
 
-      // 3. Card + qualities slide in, tap 1080p
-      setStep(3);
-      subEl.textContent = '1080p selected';
-      await sleep(850);
-      if (myId !== runId) return;
-      tapAt('21%', '70%');
-      await sleep(450);
-      if (myId !== runId) return;
-
-      // 4. Tap Download → progress fills
-      setStep(4);
-      subEl.textContent = 'Downloading 1080p MP4…';
-      tapAt('50%', '93%');
-      await tickProgress(myId, 1900);
-      if (myId !== runId) return;
-
-      // 5. Success
-      setStep(5);
-      subEl.textContent = 'Saved to your Gallery 🎉';
-      await sleep(2400);
+      // 2. Extracting (pipeline cycles) (step 3)
+      setState(2, 3);
+      const titles = [
+        'Detecting media source',
+        'Capturing stream data',
+        'Merging audio & video',
+        'Optimizing download',
+      ];
+      for (let i = 0; i < 3; i++) {
+        if (myId !== runId) return;
+        extractTitleEl.textContent = titles[i];
+        setPipeline(i);
+        await sleep(700);
+      }
       if (myId !== runId) return;
 
-      // Loop forever while in view
+      // 3. Downloading (ring fills) (step 3)
+      setState(3, 3);
+      await tickRing(myId, 2400);
+      if (myId !== runId) return;
+      await sleep(350);
+      if (myId !== runId) return;
+
+      // 4. Captured (step 4)
+      setState(4, 4);
+      await sleep(2800);
+      if (myId !== runId) return;
+
+      // Loop
       run();
     }
 
     function stop() {
-      runId++; // Any in-flight chain bails on its next tick.
+      runId++; // any in-flight chain bails
     }
 
-    // Auto-play when scrolled in, pause when scrolled out.
     const io = new IntersectionObserver(
       (entries) => {
         for (const e of entries) {
