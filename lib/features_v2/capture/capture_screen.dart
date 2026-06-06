@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:provider/provider.dart';
+import '../../core/analytics/analytics_events.dart';
+import '../../core/analytics/analytics_service.dart';
 import '../../core/utils/url_validator.dart';
 import '../../core/services/ads_service.dart';
 import '../../core/services/cobalt_service.dart';
@@ -160,6 +162,13 @@ class CaptureScreenState extends State<CaptureScreen>
     String audioFormat,
   ) async {
     dev.log('=== CAPTURE FLOW START ===', name: _tag);
+    AnalyticsService.instance.logEvent(
+      AnalyticsEvent.captureStarted,
+      params: {
+        AnalyticsParam.platform: platform,
+        AnalyticsParam.quality: quality,
+      },
+    );
     setState(() {
       _state = CaptureState.extracting;
       _pipelineStep = 0;
@@ -180,6 +189,13 @@ class CaptureScreenState extends State<CaptureScreen>
       }
     } catch (e) {
       dev.log('CAPTURE ERROR: $e', name: _tag);
+      AnalyticsService.instance.logEvent(
+        AnalyticsEvent.captureExtractFailed,
+        params: {
+          AnalyticsParam.platform: platform,
+          AnalyticsParam.error: e.toString(),
+        },
+      );
       if (mounted) {
         setState(() => _state = CaptureState.error);
         Fluttertoast.showToast(msg: 'Error: $e');

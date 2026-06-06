@@ -1,6 +1,8 @@
 import 'dart:developer' as dev;
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
+import '../../core/analytics/analytics_events.dart';
+import '../../core/analytics/analytics_service.dart';
 import '../../core/services/download_service.dart';
 import '../../core/services/storage_service.dart';
 import '../../data/local/download_dao.dart';
@@ -76,6 +78,22 @@ class DownloadsProvider extends ChangeNotifier {
           item.filename = resolvedFilename;
           DownloadDao.updateFilename(item.id, resolvedFilename);
         }
+        AnalyticsService.instance.logEvent(
+          AnalyticsEvent.downloadSucceeded,
+          params: {
+            AnalyticsParam.platform: item.platform,
+            AnalyticsParam.quality: item.quality,
+            if (item.fileSize != null) AnalyticsParam.fileSize: item.fileSize!,
+          },
+        );
+      } else if (status == 3) {
+        AnalyticsService.instance.logEvent(
+          AnalyticsEvent.downloadFailed,
+          params: {
+            AnalyticsParam.platform: item.platform,
+            AnalyticsParam.quality: item.quality,
+          },
+        );
       }
       _lastDbWrite.remove(taskId);
       _lastDbProgress.remove(taskId);

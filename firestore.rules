@@ -65,6 +65,26 @@ service cloud.firestore {
         allow read:  if isOwner(uid) || isAdmin();
         allow write: if false;
       }
+
+      // Activity log: per-user analytics breadcrumbs for important events
+      // (downloads, premium taps, errors, etc.). The mobile app writes
+      // these; admins read them in the per-user timeline. No updates or
+      // deletes — the log is append-only.
+      match /activity/{eventId} {
+        allow read:   if isOwner(uid) || isAdmin();
+        allow create: if isOwner(uid);
+        allow update, delete: if false;
+      }
+    }
+
+    // Anonymous activity log: signed-out users keyed by their device
+    // fingerprint. Same shape as profiles/{uid}/activity but lives at
+    // its own root so we don't have to invent a fake uid. World-readable
+    // by `get` is overkill — only admin reads it.
+    match /anonymous_activity/{deviceFp}/events/{eventId} {
+      allow read:   if isAdmin();
+      allow create: if true;
+      allow update, delete: if false;
     }
 
     // Admins collection: admins can see who other admins are. Writes happen

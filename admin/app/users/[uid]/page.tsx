@@ -33,6 +33,14 @@ interface UserDetail {
     createdAt: number | null;
     afterState: Record<string, unknown>;
   }>;
+  activity: Array<{
+    id: string;
+    name: string;
+    timestamp: number | null;
+    sessionId: string | null;
+    appVersion: string | null;
+    params: Record<string, unknown>;
+  }>;
 }
 
 export default async function UserDetailPage({
@@ -116,6 +124,53 @@ export default async function UserDetailPage({
         )}
       </Section>
 
+      <Section title="User activity (last 100)">
+        {user.activity.length === 0 ? (
+          <p className="text-muted text-sm">
+            No activity yet. Events appear here as the user interacts with the
+            app (downloads, premium taps, errors, etc.).
+          </p>
+        ) : (
+          <ul className="space-y-1.5 text-sm">
+            {user.activity.map((ev) => (
+              <li
+                key={ev.id}
+                className="bg-surface border border-border rounded p-2.5"
+              >
+                <div className="flex items-center justify-between">
+                  <code className="text-primary text-xs">{ev.name}</code>
+                  <span className="text-muted text-xs">
+                    {ev.timestamp
+                      ? new Date(ev.timestamp).toLocaleString()
+                      : '—'}
+                  </span>
+                </div>
+                {Object.keys(ev.params).length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-1.5">
+                    {Object.entries(ev.params)
+                      .filter(([k]) => k !== 'session_id')
+                      .map(([k, v]) => (
+                        <span
+                          key={k}
+                          className="text-xs text-muted bg-bg/70 px-1.5 py-0.5 rounded"
+                        >
+                          {k}=<span className="text-text">{String(v)}</span>
+                        </span>
+                      ))}
+                  </div>
+                )}
+                {ev.sessionId && (
+                  <div className="text-muted text-[10px] mt-1 font-mono">
+                    session {ev.sessionId.slice(0, 8)}…
+                    {ev.appVersion && ` · v${ev.appVersion}`}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
+
       <Section title="Audit log (last 50)">
         {user.audit.length === 0 ? (
           <p className="text-muted text-sm">No audit entries yet.</p>
@@ -169,7 +224,7 @@ async function loadUser(uid: string): Promise<UserDetail | null> {
   if (!profileSnap.exists) return null;
   const p = profileSnap.data()!;
 
-  const [subsSnap, devicesSnap, auditSnap] = await Promise.all([
+  const [subsSnap, devicesSnap, auditSnap, activitySnap] = await Promise.all([
     db
       .collection('profiles').doc(uid).collection('subscriptions')
       .where('active', '==', true).limit(1).get(),
@@ -179,6 +234,9 @@ async function loadUser(uid: string): Promise<UserDetail | null> {
     db
       .collection('audit_log').where('targetUserUid', '==', uid)
       .orderBy('createdAt', 'desc').limit(50).get(),
+    db
+      .collection('profiles').doc(uid).collection('activity')
+      .orderBy('timestamp', 'desc').limit(100).get(),
   ]);
 
   const activeSubscription = subsSnap.empty
@@ -216,6 +274,18 @@ async function loadUser(uid: string): Promise<UserDetail | null> {
     };
   });
 
+  const activity = activitySnap.docs.map((d) => {
+    const data = d.data();
+    return {
+      id: d.id,
+      name: (data.name as string) ?? '',
+      timestamp: data.timestamp?.toMillis?.() ?? null,
+      sessionId: (data.sessionId as string | undefined) ?? null,
+      appVersion: (data.appVersion as string | undefined) ?? null,
+      params: (data.params ?? {}) as Record<string, unknown>,
+    };
+  });
+
   return {
     uid,
     email: p.email ?? '',
@@ -228,6 +298,7 @@ async function loadUser(uid: string): Promise<UserDetail | null> {
     activeSubscription,
     devices,
     audit,
+    activity,
   };
 }
 

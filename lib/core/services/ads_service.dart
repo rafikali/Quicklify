@@ -9,6 +9,8 @@ import 'package:video_player/video_player.dart';
 import '../../data/models/ads_config.dart';
 import '../../features/premium/premium_provider.dart';
 import '../../features/settings/settings_provider.dart';
+import '../analytics/analytics_events.dart';
+import '../analytics/analytics_service.dart';
 import 'ads_config_service.dart';
 import 'premium_service.dart';
 
@@ -204,7 +206,24 @@ class InterstitialAdHelper {
     } else {
       shown = _admob.showIfReady();
     }
-    if (shown) _lastShownAt = now;
+    if (shown) {
+      _lastShownAt = now;
+      AnalyticsService.instance.logEvent(
+        AnalyticsEvent.adInterstitialShown,
+        params: {
+          AnalyticsParam.slot: slot.name,
+          AnalyticsParam.provider: cfg.interstitialProvider.wire,
+        },
+      );
+    } else {
+      AnalyticsService.instance.logEvent(
+        AnalyticsEvent.adInterstitialFailed,
+        params: {
+          AnalyticsParam.slot: slot.name,
+          AnalyticsParam.provider: cfg.interstitialProvider.wire,
+        },
+      );
+    }
     return shown;
   }
 
@@ -373,6 +392,10 @@ class _HouseInterstitialScreenState extends State<HouseInterstitialScreen> {
   Future<void> _openCta() async {
     final url = widget.ctaUrl;
     if (url.isEmpty) return;
+    AnalyticsService.instance.logEvent(
+      AnalyticsEvent.adHouseCtaClicked,
+      params: {AnalyticsParam.ctaUrl: url, 'context': 'interstitial'},
+    );
     try {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     } catch (e) {

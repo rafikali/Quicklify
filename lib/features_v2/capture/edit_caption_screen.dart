@@ -17,6 +17,8 @@ import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../core/analytics/analytics_events.dart';
+import '../../core/analytics/analytics_service.dart';
 import '../../core/services/premium_service.dart';
 import '../../core/services/storage_service.dart';
 import '../../data/local/download_dao.dart';
@@ -41,11 +43,19 @@ class EditCaptionScreen extends StatelessWidget {
   static Future<void> guardAndOpen(
       BuildContext context, DownloadItem item) async {
     if (PremiumService.instance.isPremiumSync()) {
+      AnalyticsService.instance.logEvent(
+        AnalyticsEvent.editorOpened,
+        params: {AnalyticsParam.platform: item.platform},
+      );
       await Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => EditCaptionScreen(item: item)),
       );
       return;
     }
+    AnalyticsService.instance.logEvent(
+      AnalyticsEvent.premiumGateHit,
+      params: {AnalyticsParam.reason: 'caption_editor'},
+    );
     await _showPaywall(context);
   }
 
@@ -120,6 +130,10 @@ class EditCaptionScreen extends StatelessWidget {
                 height: 48,
                 child: ElevatedButton.icon(
                   onPressed: () {
+                    AnalyticsService.instance.logEvent(
+                      AnalyticsEvent.premiumUpgradeTap,
+                      params: const {AnalyticsParam.reason: 'caption_editor'},
+                    );
                     Navigator.of(ctx).pop();
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -446,6 +460,10 @@ class EditCaptionController extends ChangeNotifier {
     _exportProgress = 0;
     _previewing = true; // hide chrome so capture is clean
     notifyListeners();
+    AnalyticsService.instance.logEvent(
+      AnalyticsEvent.editorExportStart,
+      params: {AnalyticsParam.blockCount: _blocks.length},
+    );
 
     try {
       final videoSize = c.value.size;
@@ -528,9 +546,21 @@ class EditCaptionController extends ChangeNotifier {
       await DownloadDao.insert(newItem);
       downloadsProvider.addCompletedItem(newItem);
 
+      AnalyticsService.instance.logEvent(
+        AnalyticsEvent.editorExportOk,
+        params: {
+          AnalyticsParam.blockCount: _blocks.length,
+          AnalyticsParam.fileSize: size,
+        },
+      );
+
       return finalName;
     } catch (e, st) {
       dev.log('export error: $e\n$st', name: _tag);
+      AnalyticsService.instance.logEvent(
+        AnalyticsEvent.editorExportFailed,
+        params: {AnalyticsParam.error: e.toString()},
+      );
       if (!_disposed) {
         _exporting = false;
         _exportProgress = 0;

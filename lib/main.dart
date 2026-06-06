@@ -7,6 +7,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 
 import 'app.dart';
+import 'core/analytics/analytics_service.dart';
 import 'core/services/ads_config_service.dart';
 import 'core/services/app_config_service.dart';
 import 'core/services/device_ban_service.dart';
@@ -60,6 +61,9 @@ void main() async {
   // Ads tuning config — fire-and-forget; the helpers fall back to cached /
   // default values until the first snapshot arrives.
   unawaited(AdsConfigService.instance.initialize());
+  // Analytics — fire-and-forget; GA4 + Firestore activity log. Logs the
+  // first app_open event as part of init.
+  unawaited(AnalyticsService.instance.initialize());
   unawaited(DeviceBanService.instance.initialize());
   unawaited(UserBanService.instance.initialize());
 

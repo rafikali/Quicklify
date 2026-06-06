@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:provider/provider.dart';
+import '../../core/analytics/analytics_events.dart';
+import '../../core/analytics/analytics_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/url_validator.dart';
 import '../../core/services/ads_service.dart';
@@ -228,6 +230,14 @@ class HomeScreenState extends State<HomeScreen>
     dev.log('Quality: $quality, Mode: $downloadMode, Audio: $audioFormat',
         name: _tag);
 
+    AnalyticsService.instance.logEvent(
+      AnalyticsEvent.captureStarted,
+      params: {
+        AnalyticsParam.platform: platform,
+        AnalyticsParam.quality: quality,
+      },
+    );
+
     setState(() => _isLoading = true);
 
     try {
@@ -241,6 +251,13 @@ class HomeScreenState extends State<HomeScreen>
     } catch (e, stackTrace) {
       dev.log('EXCEPTION in download flow: $e', name: _tag);
       dev.log('Stack trace: $stackTrace', name: _tag);
+      AnalyticsService.instance.logEvent(
+        AnalyticsEvent.captureExtractFailed,
+        params: {
+          AnalyticsParam.platform: platform,
+          AnalyticsParam.error: e.toString(),
+        },
+      );
       Fluttertoast.showToast(msg: 'Error: ${e.toString()}');
     } finally {
       if (mounted) setState(() => _isLoading = false);

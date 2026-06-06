@@ -4,10 +4,14 @@
 /// to `authStateChanges` to bootstrap their state.
 library;
 
+import 'dart:async';
 import 'dart:developer' as dev;
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+
+import '../analytics/analytics_events.dart';
+import '../analytics/analytics_service.dart';
 
 class AuthService {
   AuthService._();
@@ -38,12 +42,22 @@ class AuthService {
       );
       final result = await _auth.signInWithCredential(credential);
       dev.log('Signed in: ${result.user?.email}', name: _tag);
+      AnalyticsService.instance.logEvent(AnalyticsEvent.signInSuccess);
+      unawaited(AnalyticsService.instance.setUserId(result.user?.uid));
       return result.user;
     } on FirebaseAuthException catch (e) {
       dev.log('FirebaseAuth error: ${e.code} ${e.message}', name: _tag);
+      AnalyticsService.instance.logEvent(
+        AnalyticsEvent.signInFailed,
+        params: {AnalyticsParam.error: e.code},
+      );
       rethrow;
     } catch (e) {
       dev.log('Google Sign-In error: $e', name: _tag);
+      AnalyticsService.instance.logEvent(
+        AnalyticsEvent.signInFailed,
+        params: {AnalyticsParam.error: e.toString()},
+      );
       rethrow;
     }
   }
@@ -55,6 +69,8 @@ class AuthService {
         _googleSignIn.signOut(),
       ]);
       dev.log('Signed out', name: _tag);
+      AnalyticsService.instance.logEvent(AnalyticsEvent.signOut);
+      unawaited(AnalyticsService.instance.setUserId(null));
     } catch (e) {
       dev.log('Sign-out error (continuing): $e', name: _tag);
     }
