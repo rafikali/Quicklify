@@ -33,48 +33,6 @@ export function AppControlForm({ initial }: { initial: AppConfigRow }) {
       }}
       className="space-y-6"
     >
-      {/* Blackout kill-switch */}
-      <section className="bg-card border border-border rounded-xl p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="font-semibold mb-1">Blackout kill-switch</h2>
-            <p className="text-muted text-xs">
-              When ON, every signed-in user sees a full-screen message and
-              cannot use the app. Use sparingly — for security incidents,
-              maintenance, or banned-region rollout. Takes effect on next
-              foreground resume.
-            </p>
-          </div>
-          <label className="inline-flex items-center cursor-pointer shrink-0">
-            <input
-              type="checkbox"
-              className="sr-only peer"
-              checked={form.blackoutEnabled}
-              onChange={(e) => update('blackoutEnabled', e.target.checked)}
-            />
-            <div className="relative w-12 h-6 bg-surface rounded-full peer-checked:bg-danger transition-colors">
-              <div
-                className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                  form.blackoutEnabled ? 'translate-x-6' : ''
-                }`}
-              />
-            </div>
-          </label>
-        </div>
-
-        <div className="mt-4">
-          <Field label="Blackout message (shown to user)">
-            <textarea
-              value={form.blackoutMessage}
-              onChange={(e) => update('blackoutMessage', e.target.value)}
-              rows={2}
-              className={inputCls}
-            />
-          </Field>
-        </div>
-      </section>
-
-      {/* Force update */}
       <section className="bg-card border border-border rounded-xl p-5 space-y-4">
         <div>
           <h2 className="font-semibold mb-1">Force update</h2>
@@ -82,7 +40,8 @@ export function AppControlForm({ initial }: { initial: AppConfigRow }) {
             Users on versions <span className="font-mono">below</span>{' '}
             <span className="font-mono">minRequiredVersion</span> see a
             blocking screen with a Download button pointing at{' '}
-            <span className="font-mono">apkUrl</span>.
+            <span className="font-mono">apkUrl</span>. Takes effect on every
+            user&apos;s next app launch or foreground resume.
           </p>
         </div>
 

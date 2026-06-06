@@ -1,12 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Remote-controlled app gate. Sourced from Firestore `config/app` and
-/// fetched on every cold start + foreground resume. The values here decide
-/// whether the app renders normally, shows a "blackout" screen, or shows a
-/// blocking "update required" screen.
+/// Remote-controlled force-update gate. Sourced from Firestore `config/app`
+/// and fetched on every cold start + foreground resume.
 ///
-/// All version fields are dotted semver-ish strings like `1.4.0`. Comparison
-/// is left-to-right numeric; missing components are treated as 0.
+/// Per-user bans live separately on `profiles/{uid}.banned` — handled by
+/// UserBanService, not here.
 class AppConfig {
   /// Below this the user MUST update — full-screen, no dismiss.
   final String minRequiredVersion;
@@ -18,13 +16,6 @@ class AppConfig {
   /// HTTPS URL the "Download" button on the force-update screen opens.
   final String apkUrl;
 
-  /// Soft kill-switch. When true, every user sees [blackoutMessage] and
-  /// cannot interact with the app.
-  final bool blackoutEnabled;
-
-  /// Message shown on the blackout screen.
-  final String blackoutMessage;
-
   /// Message shown on the force-update screen (above the Download button).
   final String updateMessage;
 
@@ -32,19 +23,15 @@ class AppConfig {
     required this.minRequiredVersion,
     required this.latestVersion,
     required this.apkUrl,
-    required this.blackoutEnabled,
-    required this.blackoutMessage,
     required this.updateMessage,
   });
 
   /// Safe defaults — used when Firestore is unreachable on first launch.
-  /// `minRequiredVersion: '0.0.0'` means nothing is forced; blackout off.
+  /// `minRequiredVersion: '0.0.0'` means nothing is forced.
   static const fallback = AppConfig(
     minRequiredVersion: '0.0.0',
     latestVersion: '0.0.0',
     apkUrl: 'https://quicklify-murex.vercel.app/downloads/quicklify-latest.apk',
-    blackoutEnabled: false,
-    blackoutMessage: 'Quicklify is temporarily unavailable.',
     updateMessage: 'A new version of Quicklify is required. '
         'Please download the latest APK to continue.',
   );
@@ -58,9 +45,6 @@ class AppConfig {
           (d['minRequiredVersion'] as String?) ?? fallback.minRequiredVersion,
       latestVersion: (d['latestVersion'] as String?) ?? fallback.latestVersion,
       apkUrl: (d['apkUrl'] as String?) ?? fallback.apkUrl,
-      blackoutEnabled: (d['blackoutEnabled'] as bool?) ?? false,
-      blackoutMessage:
-          (d['blackoutMessage'] as String?) ?? fallback.blackoutMessage,
       updateMessage:
           (d['updateMessage'] as String?) ?? fallback.updateMessage,
     );
@@ -70,8 +54,6 @@ class AppConfig {
         'minRequiredVersion': minRequiredVersion,
         'latestVersion': latestVersion,
         'apkUrl': apkUrl,
-        'blackoutEnabled': blackoutEnabled,
-        'blackoutMessage': blackoutMessage,
         'updateMessage': updateMessage,
       };
 
@@ -81,9 +63,6 @@ class AppConfig {
         latestVersion:
             (d['latestVersion'] as String?) ?? fallback.latestVersion,
         apkUrl: (d['apkUrl'] as String?) ?? fallback.apkUrl,
-        blackoutEnabled: (d['blackoutEnabled'] as bool?) ?? false,
-        blackoutMessage:
-            (d['blackoutMessage'] as String?) ?? fallback.blackoutMessage,
         updateMessage:
             (d['updateMessage'] as String?) ?? fallback.updateMessage,
       );

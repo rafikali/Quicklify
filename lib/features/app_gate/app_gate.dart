@@ -1,19 +1,21 @@
 /// Root-level gate that wraps the app's home tree.
 ///
 /// Decision order (first match wins):
-///   1. blackout_enabled → BlackoutScreen
+///   1. signed-in user has `profiles/{uid}.banned == true` → BlackoutScreen
+///      (per-user ban applied from the admin panel)
 ///   2. installed version < min_required_version → ForceUpdateScreen
 ///   3. otherwise → child (the real app)
 ///
 /// Re-evaluates on every Firestore snapshot AND on AppLifecycleState.resumed
-/// so a kill-switch toggled while the app sat in background takes effect
-/// the instant the user comes back.
+/// so changes made while the app was backgrounded take effect the instant
+/// the user comes back.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../core/services/app_config_service.dart';
+import '../../core/services/user_ban_service.dart';
 import '../../data/models/app_config.dart';
 import 'blackout_screen.dart';
 import 'force_update_screen.dart';
@@ -40,6 +42,9 @@ class _AppGateState extends State<AppGate> with WidgetsBindingObserver {
     AppConfigService.instance.changes.listen((cfg) {
       if (mounted) setState(() => _config = cfg);
     });
+    UserBanService.instance.changes.listen((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   Future<void> _loadVersion() async {
@@ -55,6 +60,7 @@ class _AppGateState extends State<AppGate> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       AppConfigService.instance.fetchOnce();
+      UserBanService.instance.fetchOnce();
     }
   }
 
@@ -66,8 +72,8 @@ class _AppGateState extends State<AppGate> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    if (_config.blackoutEnabled) {
-      return BlackoutScreen(message: _config.blackoutMessage);
+    if (UserBanService.instance.isBanned) {
+      return BlackoutScreen(message: UserBanService.instance.banReason);
     }
     if (_config.requiresUpdate(_currentVersion)) {
       return ForceUpdateScreen(

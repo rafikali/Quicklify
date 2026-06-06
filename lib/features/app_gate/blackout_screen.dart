@@ -3,9 +3,9 @@ import 'package:flutter/services.dart';
 
 import '../../features_v2/theme/flux_theme.dart';
 
-/// Full-screen kill-switch shown when [AppConfig.blackoutEnabled] is true.
-/// No back navigation, no close button, no interaction with the rest of the
-/// app. Wrapped in a PopScope so Android back is also swallowed.
+/// Full-screen blocker shown when the signed-in user's profile has
+/// `banned == true`. No back navigation, no close button — only "Close app".
+/// Wrapped in a PopScope so Android back is also swallowed.
 class BlackoutScreen extends StatelessWidget {
   final String message;
 
@@ -39,7 +39,7 @@ class BlackoutScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 32),
                   const Text(
-                    'Service unavailable',
+                    'Account suspended',
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w700,

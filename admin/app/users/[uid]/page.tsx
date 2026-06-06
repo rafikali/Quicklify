@@ -10,6 +10,7 @@ interface UserDetail {
   displayName: string | null;
   photoUrl: string | null;
   banned: boolean;
+  banReason: string | null;
   createdAt: number | null;
   lastSeenAt: number | null;
   activeSubscription: {
@@ -143,7 +144,11 @@ export default async function UserDetailPage({
       </Section>
 
       <Section title="Danger zone">
-        <BanUserForm targetUid={user.uid} banned={user.banned} />
+        <BanUserForm
+          targetUid={user.uid}
+          banned={user.banned}
+          banReason={user.banReason}
+        />
       </Section>
     </div>
   );
@@ -217,6 +222,7 @@ async function loadUser(uid: string): Promise<UserDetail | null> {
     displayName: p.displayName ?? null,
     photoUrl: p.photoUrl ?? null,
     banned: p.banned === true,
+    banReason: (p.banReason as string | undefined) ?? null,
     createdAt: p.createdAt?.toMillis?.() ?? null,
     lastSeenAt: p.lastSeenAt?.toMillis?.() ?? null,
     activeSubscription,

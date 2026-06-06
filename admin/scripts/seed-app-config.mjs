@@ -37,8 +37,6 @@ const defaults = {
   minRequiredVersion: '0.0.0',
   latestVersion: '1.0.0',
   apkUrl: 'https://quicklify-murex.vercel.app/downloads/quicklify-latest.apk',
-  blackoutEnabled: false,
-  blackoutMessage: 'Quicklify is temporarily unavailable.',
   updateMessage:
     'A new version of Quicklify is required. Please download the latest APK to continue.',
 };

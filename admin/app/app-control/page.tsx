@@ -9,8 +9,6 @@ const DEFAULTS: AppConfigRow = {
   minRequiredVersion: '0.0.0',
   latestVersion: '0.0.0',
   apkUrl: 'https://quicklify-murex.vercel.app/downloads/quicklify-latest.apk',
-  blackoutEnabled: false,
-  blackoutMessage: 'Quicklify is temporarily unavailable.',
   updateMessage:
     'A new version of Quicklify is required. Please download the latest APK to continue.',
 };
@@ -23,17 +21,14 @@ export default async function AppControlPage() {
 
   return (
     <div>
-      <div className="flex items-baseline justify-between mb-1">
-        <h1 className="text-xl font-semibold">App control</h1>
-        {current.blackoutEnabled && (
-          <span className="text-xs px-2 py-0.5 rounded bg-danger/15 text-danger font-medium">
-            BLACKOUT LIVE
-          </span>
-        )}
-      </div>
+      <h1 className="text-xl font-semibold mb-1">App control</h1>
       <p className="text-muted text-sm mb-6">
-        Force-update gate + blackout kill-switch. Changes take effect on every
-        user&apos;s next app launch or foreground resume — no rebuild needed.
+        Force-update gate. To block an individual user, go to their profile in{' '}
+        <a href="/users" className="text-primary hover:underline">
+          Users
+        </a>{' '}
+        and use the Danger zone &middot; Ban action — the app will show a
+        blackout screen for that user only.
       </p>
       <AppControlForm initial={current} />
     </div>
@@ -50,9 +45,6 @@ async function loadConfig(): Promise<AppConfigRow> {
       (d.minRequiredVersion as string) ?? DEFAULTS.minRequiredVersion,
     latestVersion: (d.latestVersion as string) ?? DEFAULTS.latestVersion,
     apkUrl: (d.apkUrl as string) ?? DEFAULTS.apkUrl,
-    blackoutEnabled: (d.blackoutEnabled as boolean) ?? false,
-    blackoutMessage:
-      (d.blackoutMessage as string) ?? DEFAULTS.blackoutMessage,
     updateMessage: (d.updateMessage as string) ?? DEFAULTS.updateMessage,
   };
 }

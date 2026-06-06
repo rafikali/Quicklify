@@ -6,6 +6,7 @@ import {
   grantPremiumAction,
   revokeDeviceAction,
   revokePremiumAction,
+  unbanUserAction,
 } from '../../actions';
 
 export interface GrantPlanOption {
@@ -219,12 +220,54 @@ export function RevokeDeviceButton({
   );
 }
 
-export function BanUserForm({ targetUid, banned }: { targetUid: string; banned: boolean }) {
+export function BanUserForm({
+  targetUid,
+  banned,
+  banReason,
+}: {
+  targetUid: string;
+  banned: boolean;
+  banReason: string | null;
+}) {
   const [pending, start] = useTransition();
   const [reason, setReason] = useState('');
 
   if (banned) {
-    return <p className="text-danger text-sm">This user is currently banned.</p>;
+    return (
+      <div className="space-y-3">
+        <div className="bg-danger/10 border border-danger/30 rounded p-3 text-sm">
+          <p className="text-danger font-medium mb-1">
+            This user is currently banned.
+          </p>
+          {banReason && (
+            <p className="text-muted text-xs">
+              Reason shown to user:{' '}
+              <span className="text-text">&ldquo;{banReason}&rdquo;</span>
+            </p>
+          )}
+          <p className="text-muted text-xs mt-1">
+            The app shows a full-screen blackout to this user. Unbanning does
+            not auto-restore premium or devices.
+          </p>
+        </div>
+        <button
+          disabled={pending}
+          onClick={() => {
+            if (!confirm('Unban this user?')) return;
+            start(async () => {
+              try {
+                await unbanUserAction(targetUid);
+              } catch (err) {
+                alert(err instanceof Error ? err.message : String(err));
+              }
+            });
+          }}
+          className="bg-surface border border-border text-text px-4 py-2 rounded font-medium disabled:opacity-50 hover:border-primary"
+        >
+          {pending ? 'Unbanning…' : 'Unban user'}
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -235,7 +278,12 @@ export function BanUserForm({ targetUid, banned }: { targetUid: string; banned: 
           alert('Reason required (min 3 chars)');
           return;
         }
-        if (!confirm('Permanently ban this user? Revokes all subscriptions and devices.')) return;
+        if (
+          !confirm(
+            'Ban this user? Revokes all active subscriptions and shows a full-screen blackout in the app. (Reversible.)'
+          )
+        )
+          return;
         start(async () => {
           try {
             await banUserAction(targetUid, reason);
@@ -249,7 +297,7 @@ export function BanUserForm({ targetUid, banned }: { targetUid: string; banned: 
       <input
         value={reason}
         onChange={(e) => setReason(e.target.value)}
-        placeholder="Ban reason (required)"
+        placeholder="Ban reason (shown to user)"
         className="flex-1 bg-surface border border-border rounded px-3 py-2 text-sm"
       />
       <button

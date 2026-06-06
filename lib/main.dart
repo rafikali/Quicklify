@@ -12,6 +12,7 @@ import 'core/services/download_service.dart';
 import 'core/services/plans_service.dart';
 import 'core/services/premium_service.dart';
 import 'core/services/share_intent_service.dart';
+import 'core/services/user_ban_service.dart';
 import 'features/downloads/downloads_provider.dart';
 import 'features/premium/plans_provider.dart';
 import 'features/premium/premium_provider.dart';
@@ -52,9 +53,9 @@ void main() async {
   // Plans listener is fire-and-forget — fallback catalog is used until the
   // first Firestore snapshot arrives.
   unawaited(PlansService.instance.initialize());
-  // App gate config: hydrate cache + start listener before runApp so the
-  // first frame already reflects blackout/force-update state when available.
+  // App gate: force-update config (global) + per-user ban listener.
   await AppConfigService.instance.initialize();
+  unawaited(UserBanService.instance.initialize());
 
   // Listen for share intents
   String? sharedUrl;

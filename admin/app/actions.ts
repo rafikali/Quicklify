@@ -20,6 +20,7 @@ type AuditAction =
   | 'revoke_premium'
   | 'revoke_device'
   | 'ban_user'
+  | 'unban_user'
   | 'create_plan'
   | 'update_plan'
   | 'delete_plan'
@@ -304,8 +305,6 @@ export interface AppConfigInput {
   minRequiredVersion: string;
   latestVersion: string;
   apkUrl: string;
-  blackoutEnabled: boolean;
-  blackoutMessage: string;
   updateMessage: string;
 }
 
@@ -323,9 +322,6 @@ function validateAppConfig(input: AppConfigInput): void {
     if (u.protocol !== 'https:') throw new Error('must be https');
   } catch {
     throw new Error('apkUrl must be a valid https URL');
-  }
-  if (input.blackoutMessage.trim().length < 3) {
-    throw new Error('blackoutMessage is required');
   }
   if (input.updateMessage.trim().length < 3) {
     throw new Error('updateMessage is required');
@@ -346,8 +342,6 @@ export async function updateAppConfigAction(
     minRequiredVersion: input.minRequiredVersion.trim(),
     latestVersion: input.latestVersion.trim(),
     apkUrl: input.apkUrl.trim(),
-    blackoutEnabled: input.blackoutEnabled,
-    blackoutMessage: input.blackoutMessage.trim(),
     updateMessage: input.updateMessage.trim(),
     updatedAt: FieldValue.serverTimestamp(),
     updatedBy: adminUid,
@@ -379,9 +373,15 @@ export async function banUserAction(
   const profileRef = db.collection('profiles').doc(targetUid);
   const subsCol = profileRef.collection('subscriptions');
   const now = Timestamp.now();
+  const trimmedReason = reason.trim();
 
   await db.runTransaction(async (tx) => {
-    tx.update(profileRef, { banned: true });
+    tx.update(profileRef, {
+      banned: true,
+      banReason: trimmedReason,
+      bannedAt: now,
+      bannedBy: adminUid,
+    });
     const subs = await tx.get(subsCol.where('active', '==', true));
     for (const d of subs.docs) {
       tx.update(d.ref, { active: false, endsAt: now });
@@ -392,7 +392,31 @@ export async function banUserAction(
     action: 'ban_user',
     actorAdminUid: adminUid,
     targetUserUid: targetUid,
-    afterState: { reason },
+    afterState: { reason: trimmedReason },
+  });
+
+  revalidatePath(`/users/${targetUid}`);
+}
+
+export async function unbanUserAction(targetUid: string): Promise<void> {
+  const adminUid = await requireAdmin();
+  const { db } = firebaseAdmin();
+  const profileRef = db.collection('profiles').doc(targetUid);
+
+  // Clear ban fields. Premium / devices are NOT auto-restored — re-grant
+  // explicitly if needed.
+  await profileRef.update({
+    banned: false,
+    banReason: FieldValue.delete(),
+    bannedAt: FieldValue.delete(),
+    bannedBy: FieldValue.delete(),
+  });
+
+  await writeAudit({
+    action: 'unban_user',
+    actorAdminUid: adminUid,
+    targetUserUid: targetUid,
+    afterState: {},
   });
 
   revalidatePath(`/users/${targetUid}`);
