@@ -38,7 +38,8 @@ class HomeScreenState extends State<HomeScreen>
   late AnimationController _pulseController;
   late AnimationController _ringController;
 
-  final _interstitial = InterstitialAdHelper(frequency: 3);
+  // Cadence + provider come from the remote AdsConfig (admin panel).
+  final _interstitial = InterstitialAdHelper(slot: AdSlot.downloadStart);
 
   @override
   void initState() {
@@ -357,9 +358,9 @@ class HomeScreenState extends State<HomeScreen>
     // Navigate to downloads tab
     widget.onDownloadStarted?.call();
 
-    // Show an interstitial every Nth successful enqueue (respects ads toggle).
+    // Cadence + provider come from AdsConfig (admin-controlled).
     if (context.read<SettingsProvider>().adsEnabled) {
-      _interstitial.maybeShow();
+      _interstitial.maybeShow(context);
     }
 
     ScaffoldMessenger.of(context).showSnackBar(

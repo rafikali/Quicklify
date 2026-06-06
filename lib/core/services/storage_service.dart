@@ -12,6 +12,23 @@ class StorageService {
 
   StorageService._();
 
+  /// Copy a `content://` URI to a local cache file using Android's
+  /// ContentResolver. Returns the destination path on success, or null on
+  /// failure. No-op on non-Android.
+  static Future<String?> copyUriToFile(String uri, String destPath) async {
+    if (!Platform.isAndroid) return null;
+    try {
+      final result = await _galleryChannel.invokeMethod<String>(
+        'copyUriToFile',
+        {'uri': uri, 'destPath': destPath},
+      );
+      return result;
+    } catch (e) {
+      dev.log('copyUriToFile failed: $e', name: _tag);
+      return null;
+    }
+  }
+
   /// Register a file with Android's MediaStore so it shows in file managers
   static Future<void> scanFile(String path) async {
     if (!Platform.isAndroid) return;

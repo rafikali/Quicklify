@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/url_validator.dart';
+import '../../../features_v2/capture/edit_caption_screen.dart';
 import '../downloads_provider.dart';
 import '../models/download_item.dart';
 import '../video_player_screen.dart';
@@ -251,6 +252,17 @@ class DownloadTile extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
+                  if (_isVideoFilename(item.filename)) ...[
+                    _actionChip(
+                      context,
+                      icon: Icons.edit_outlined,
+                      label: 'Edit Caption',
+                      color: AppColors.primary,
+                      onTap: () =>
+                          EditCaptionScreen.guardAndOpen(context, item),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
                   _actionChip(
                     context,
                     icon: Icons.delete_outline_rounded,

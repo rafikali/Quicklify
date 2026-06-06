@@ -26,7 +26,8 @@ type AuditAction =
   | 'create_plan'
   | 'update_plan'
   | 'delete_plan'
-  | 'update_app_config';
+  | 'update_app_config'
+  | 'update_ads_config';
 
 interface AuditInput {
   action: AuditAction;
@@ -360,6 +361,121 @@ export async function updateAppConfigAction(
   });
 
   revalidatePath('/app-control');
+}
+
+// ---------- ads config (cadence + provider routing) ----------------------
+
+export type AdProviderWire = 'admob' | 'house';
+
+export interface AdsConfigInput {
+  // Cadence
+  interstitialOnDownloadStart: number;
+  interstitialOnDownloadComplete: number;
+  interstitialMinIntervalSeconds: number;
+  bannerEnabled: boolean;
+  // Provider routing
+  interstitialProvider: AdProviderWire;
+  bannerProvider: AdProviderWire;
+  // House interstitial
+  houseInterstitialVideoUrl: string;
+  houseInterstitialCtaText: string;
+  houseInterstitialCtaUrl: string;
+  houseInterstitialSkipAfterSeconds: number;
+  // House banner
+  houseBannerImageUrl: string;
+  houseBannerCtaUrl: string;
+}
+
+function validateAdsConfig(input: AdsConfigInput): void {
+  const nonNegInts: Array<[string, number]> = [
+    ['interstitialOnDownloadStart', input.interstitialOnDownloadStart],
+    ['interstitialOnDownloadComplete', input.interstitialOnDownloadComplete],
+    ['interstitialMinIntervalSeconds', input.interstitialMinIntervalSeconds],
+    ['houseInterstitialSkipAfterSeconds', input.houseInterstitialSkipAfterSeconds],
+  ];
+  for (const [name, v] of nonNegInts) {
+    if (!Number.isFinite(v) || v < 0 || !Number.isInteger(v)) {
+      throw new Error(`${name} must be a non-negative integer`);
+    }
+  }
+  if (input.interstitialMinIntervalSeconds > 600) {
+    throw new Error('interstitialMinIntervalSeconds is unreasonably large (>600s)');
+  }
+  if (input.interstitialProvider !== 'admob' && input.interstitialProvider !== 'house') {
+    throw new Error('interstitialProvider must be "admob" or "house"');
+  }
+  if (input.bannerProvider !== 'admob' && input.bannerProvider !== 'house') {
+    throw new Error('bannerProvider must be "admob" or "house"');
+  }
+  // House content only validated when the provider actually uses it —
+  // admins can stash URLs in advance while still serving AdMob.
+  if (input.interstitialProvider === 'house') {
+    if (!isHttpsUrl(input.houseInterstitialVideoUrl)) {
+      throw new Error('houseInterstitialVideoUrl must be a valid https URL when provider=house');
+    }
+    if (input.houseInterstitialCtaUrl.trim() &&
+        !isHttpsUrl(input.houseInterstitialCtaUrl)) {
+      throw new Error('houseInterstitialCtaUrl must be a valid https URL (or empty)');
+    }
+  }
+  if (input.bannerProvider === 'house') {
+    if (!isHttpsUrl(input.houseBannerImageUrl)) {
+      throw new Error('houseBannerImageUrl must be a valid https URL when provider=house');
+    }
+    if (input.houseBannerCtaUrl.trim() &&
+        !isHttpsUrl(input.houseBannerCtaUrl)) {
+      throw new Error('houseBannerCtaUrl must be a valid https URL (or empty)');
+    }
+  }
+}
+
+function isHttpsUrl(s: string): boolean {
+  try {
+    const u = new URL(s.trim());
+    return u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+export async function updateAdsConfigAction(
+  input: AdsConfigInput
+): Promise<void> {
+  const adminUid = await requireAdmin();
+  validateAdsConfig(input);
+
+  const { db } = firebaseAdmin();
+  const ref = db.collection('config').doc('ads');
+  const before = (await ref.get()).data() ?? null;
+
+  const next = {
+    interstitialOnDownloadStart: input.interstitialOnDownloadStart,
+    interstitialOnDownloadComplete: input.interstitialOnDownloadComplete,
+    interstitialMinIntervalSeconds: input.interstitialMinIntervalSeconds,
+    bannerEnabled: input.bannerEnabled,
+    interstitialProvider: input.interstitialProvider,
+    bannerProvider: input.bannerProvider,
+    houseInterstitialVideoUrl: input.houseInterstitialVideoUrl.trim(),
+    houseInterstitialCtaText: input.houseInterstitialCtaText.trim(),
+    houseInterstitialCtaUrl: input.houseInterstitialCtaUrl.trim(),
+    houseInterstitialSkipAfterSeconds: input.houseInterstitialSkipAfterSeconds,
+    houseBannerImageUrl: input.houseBannerImageUrl.trim(),
+    houseBannerCtaUrl: input.houseBannerCtaUrl.trim(),
+    updatedAt: FieldValue.serverTimestamp(),
+    updatedBy: adminUid,
+  };
+
+  await ref.set(next, { merge: true });
+
+  await writeAudit({
+    action: 'update_ads_config',
+    actorAdminUid: adminUid,
+    targetUserUid: 'app',
+    beforeState: before ?? {},
+    afterState: { ...input },
+  });
+
+  revalidatePath('/ads');
 }
 
 export async function banUserAction(

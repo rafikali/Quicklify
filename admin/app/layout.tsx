@@ -33,6 +33,7 @@ function Nav() {
         <Link href="/devices" className="text-muted hover:text-text text-sm">Devices</Link>
         <Link href="/plans" className="text-muted hover:text-text text-sm">Plans</Link>
         <Link href="/app-control" className="text-muted hover:text-text text-sm">App control</Link>
+        <Link href="/ads" className="text-muted hover:text-text text-sm">Ads</Link>
         <Link href="/audit" className="text-muted hover:text-text text-sm">Audit log</Link>
         <form action={signOutAction} className="ml-auto">
           <button

@@ -17,6 +17,7 @@ import '../widgets/rain_background.dart';
 import '../widgets/pipeline_steps.dart';
 import '../widgets/circular_progress_ring.dart';
 import '../widgets/confetti_overlay.dart';
+import 'edit_caption_screen.dart';
 
 const String _tag = 'CaptureScreen';
 
@@ -57,13 +58,19 @@ class CaptureScreenState extends State<CaptureScreen>
 
   late AnimationController _pulseController;
 
-  final _interstitial = InterstitialAdHelper(frequency: 3);
+  // Cadence + provider both come from the remote AdsConfig now (admin).
+  // One helper per logical slot so the per-slot counter is independent.
+  final _startInterstitial =
+      InterstitialAdHelper(slot: AdSlot.downloadStart);
+  final _completeInterstitial =
+      InterstitialAdHelper(slot: AdSlot.downloadComplete);
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _interstitial.loadInterstitial();
+    _startInterstitial.loadInterstitial();
+    _completeInterstitial.loadInterstitial();
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2000),
@@ -80,7 +87,8 @@ class CaptureScreenState extends State<CaptureScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _pulseController.dispose();
-    _interstitial.dispose();
+    _startInterstitial.dispose();
+    _completeInterstitial.dispose();
     super.dispose();
   }
 
@@ -314,9 +322,9 @@ class CaptureScreenState extends State<CaptureScreen>
       _pipelineStep = 3;
     });
 
-    // Show an interstitial every Nth successful enqueue (respects ads toggle).
+    // Cadence + provider come from AdsConfig (admin-controlled).
     if (context.read<SettingsProvider>().adsEnabled) {
-      _interstitial.maybeShow();
+      _startInterstitial.maybeShow(context);
     }
 
     // Start listening for updates
@@ -361,6 +369,10 @@ class CaptureScreenState extends State<CaptureScreen>
       _completedFileSize = item.fileSize;
       setState(() => _state = CaptureState.complete);
       provider.removeListener(_onProviderUpdate);
+      // Cadence + provider come from AdsConfig (admin-controlled).
+      if (context.read<SettingsProvider>().adsEnabled) {
+        _completeInterstitial.maybeShow(context);
+      }
     } else if (item.isFailed && _state != CaptureState.error) {
       setState(() => _state = CaptureState.error);
       provider.removeListener(_onProviderUpdate);
@@ -368,6 +380,22 @@ class CaptureScreenState extends State<CaptureScreen>
     } else if (_state == CaptureState.downloading) {
       setState(() {}); // rebuild for progress
     }
+  }
+
+  void _onEditCaption() {
+    final provider = context.read<DownloadsProvider>();
+    DownloadItem? item;
+    if (_activeTaskId != null) {
+      item = provider.allDownloads
+          .where((d) => d.taskId == _activeTaskId)
+          .firstOrNull;
+    }
+    item ??= provider.completedDownloads.firstOrNull;
+    if (item == null) {
+      Fluttertoast.showToast(msg: 'Could not locate downloaded file');
+      return;
+    }
+    EditCaptionScreen.guardAndOpen(context, item);
   }
 
   void _resetToIdle() {
@@ -826,14 +854,40 @@ class CaptureScreenState extends State<CaptureScreen>
                   ],
                 ),
               ),
-              const SizedBox(height: 40),
-              // New capture button
+              const SizedBox(height: 32),
+              // Edit caption — primary CTA
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 40),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: _onEditCaption,
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    label: const Text('Edit Caption'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: FluxColors.cyan,
+                      foregroundColor: FluxColors.bg,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                      textStyle: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              // New capture — secondary
               TextButton.icon(
                 onPressed: _resetToIdle,
                 icon: const Icon(Icons.bolt, size: 18),
                 label: const Text('New Capture'),
                 style: TextButton.styleFrom(
-                  foregroundColor: FluxColors.cyan,
+                  foregroundColor: FluxColors.textSecondary,
                   textStyle: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,

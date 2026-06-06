@@ -4,7 +4,17 @@ import 'package:provider/provider.dart';
 import '../../core/utils/url_validator.dart';
 import '../../features/downloads/downloads_provider.dart';
 import '../../features/downloads/models/download_item.dart';
+import '../capture/edit_caption_screen.dart';
 import '../theme/flux_theme.dart';
+
+const _videoExtensions = {'.mp4', '.mkv', '.webm', '.mov', '.m4v', '.3gp'};
+
+bool _isVideoFilename(String filename) {
+  final lower = filename.toLowerCase();
+  final dot = lower.lastIndexOf('.');
+  if (dot < 0) return false;
+  return _videoExtensions.contains(lower.substring(dot));
+}
 
 class StreamHistoryScreen extends StatefulWidget {
   const StreamHistoryScreen({super.key});
@@ -266,7 +276,7 @@ class _StreamTile extends StatelessWidget {
               ],
             ),
           ),
-          // Status / delete
+          // Status / actions
           if (item.isActive)
             SizedBox(
               width: 28,
@@ -277,7 +287,15 @@ class _StreamTile extends StatelessWidget {
                 color: FluxColors.cyan,
               ),
             )
-          else
+          else ...[
+            if (item.isCompleted && _isVideoFilename(item.filename))
+              IconButton(
+                icon: const Icon(Icons.edit_outlined,
+                    color: FluxColors.cyan, size: 20),
+                tooltip: 'Edit caption',
+                onPressed: () =>
+                    EditCaptionScreen.guardAndOpen(context, item),
+              ),
             IconButton(
               icon: const Icon(Icons.delete_outline,
                   color: FluxColors.textMuted, size: 20),
@@ -285,6 +303,7 @@ class _StreamTile extends StatelessWidget {
                 context.read<DownloadsProvider>().removeDownload(item);
               },
             ),
+          ],
         ],
       ),
     );

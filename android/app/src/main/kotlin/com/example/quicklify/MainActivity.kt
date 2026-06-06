@@ -8,6 +8,7 @@ import android.media.MediaScannerConnection
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -19,9 +20,32 @@ class MainActivity : FlutterActivity() {
     private val SCANNER_CHANNEL = "com.example.quicklify/media_scanner"
     private val MUXER_CHANNEL = "com.example.quicklify/media_muxer"
     private val GALLERY_CHANNEL = "com.example.quicklify/gallery"
+    private val DEVICE_CHANNEL = "com.example.quicklify/device"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        // Device identity channel — exposes Settings.Secure.ANDROID_ID.
+        // ANDROID_ID is stable across reinstalls and Clear-Data on Android
+        // 8+, scoped per app-signing-key. This is the only reliable per-
+        // device identifier without the privacy/permissions cost of
+        // IMEI/serial.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, DEVICE_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                if (call.method == "getAndroidId") {
+                    try {
+                        val id = Settings.Secure.getString(
+                            contentResolver,
+                            Settings.Secure.ANDROID_ID
+                        )
+                        result.success(id) // may be null on some old devices
+                    } catch (e: Exception) {
+                        result.error("ANDROID_ID_FAILED", e.message, null)
+                    }
+                } else {
+                    result.notImplemented()
+                }
+            }
 
         // Media scanner channel
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SCANNER_CHANNEL)
@@ -44,9 +68,38 @@ class MainActivity : FlutterActivity() {
                 }
             }
 
-        // Gallery save channel — saves file to gallery via MediaStore
+        // Gallery save channel — saves file to gallery via MediaStore, or
+        // copies a content:// URI into a local cache file (used by the
+        // caption editor so ffmpeg can read scoped-storage videos).
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, GALLERY_CHANNEL)
             .setMethodCallHandler { call, result ->
+                if (call.method == "copyUriToFile") {
+                    val uriString = call.argument<String>("uri")
+                    val destPath = call.argument<String>("destPath")
+                    if (uriString == null || destPath == null) {
+                        result.error("INVALID_ARGUMENT", "Missing arguments", null)
+                        return@setMethodCallHandler
+                    }
+                    Thread {
+                        try {
+                            val uri = android.net.Uri.parse(uriString)
+                            val outFile = File(destPath)
+                            outFile.parentFile?.mkdirs()
+                            contentResolver.openInputStream(uri).use { input ->
+                                if (input == null) throw Exception("Cannot open input stream for $uriString")
+                                outFile.outputStream().use { output ->
+                                    input.copyTo(output, bufferSize = 64 * 1024)
+                                }
+                            }
+                            runOnUiThread { result.success(destPath) }
+                        } catch (e: Exception) {
+                            runOnUiThread {
+                                result.error("COPY_URI_FAILED", e.message, null)
+                            }
+                        }
+                    }.start()
+                    return@setMethodCallHandler
+                }
                 if (call.method == "saveToGallery") {
                     val filePath = call.argument<String>("filePath")
                     val filename = call.argument<String>("filename")

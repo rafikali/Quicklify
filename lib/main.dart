@@ -7,6 +7,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 
 import 'app.dart';
+import 'core/services/ads_config_service.dart';
 import 'core/services/app_config_service.dart';
 import 'core/services/device_ban_service.dart';
 import 'core/services/download_service.dart';
@@ -56,6 +57,9 @@ void main() async {
   unawaited(PlansService.instance.initialize());
   // App gate: force-update config (global) + per-device ban + per-user ban.
   await AppConfigService.instance.initialize();
+  // Ads tuning config — fire-and-forget; the helpers fall back to cached /
+  // default values until the first snapshot arrives.
+  unawaited(AdsConfigService.instance.initialize());
   unawaited(DeviceBanService.instance.initialize());
   unawaited(UserBanService.instance.initialize());
 

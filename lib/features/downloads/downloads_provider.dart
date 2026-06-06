@@ -288,6 +288,14 @@ class DownloadsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Insert an already-completed [DownloadItem] (e.g. produced by the
+  /// caption editor) into the in-memory list and notify listeners.
+  /// Caller is responsible for persisting to the DB.
+  void addCompletedItem(DownloadItem item) {
+    _downloads.insert(0, item);
+    notifyListeners();
+  }
+
   Future<void> clearHistory() async {
     final completed = completedDownloads;
     for (final item in completed) {

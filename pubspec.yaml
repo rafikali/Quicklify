@@ -56,6 +56,9 @@ dependencies:
   # In-app video playback
   video_player: ^2.9.2
 
+  # Video processing (caption masking export — overlay filter)
+  ffmpeg_kit_flutter_new: ^3.2.0
+
   # Firebase + Google Sign-In (premium feature, Option C — no Cloud Functions)
   firebase_core: ^3.8.0
   firebase_auth: ^5.3.4
