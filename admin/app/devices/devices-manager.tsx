@@ -111,7 +111,12 @@ function DeviceRowItem({ d }: { d: DeviceRow }) {
   return (
     <tr className="border-t border-border align-top">
       <td className="py-2.5 px-4">
-        <div className="font-medium">{d.label ?? 'Unknown device'}</div>
+        <Link
+          href={`/devices/${d.id}`}
+          className="font-medium hover:text-primary hover:underline"
+        >
+          {d.label ?? 'Unknown device'}
+        </Link>
         <div className="text-xs text-muted font-mono mt-0.5">
           {d.id.slice(0, 12)}…{d.id.slice(-6)}
         </div>

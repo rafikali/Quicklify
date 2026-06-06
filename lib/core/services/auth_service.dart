@@ -43,7 +43,13 @@ class AuthService {
       final result = await _auth.signInWithCredential(credential);
       dev.log('Signed in: ${result.user?.email}', name: _tag);
       AnalyticsService.instance.logEvent(AnalyticsEvent.signInSuccess);
-      unawaited(AnalyticsService.instance.setUserId(result.user?.uid));
+      final uid = result.user?.uid;
+      unawaited(AnalyticsService.instance.setUserId(uid));
+      // Bridge pre-login activity into the user's profile log so the
+      // admin timeline is continuous across sign-in.
+      if (uid != null) {
+        unawaited(AnalyticsService.instance.mergeAnonymousActivity(uid));
+      }
       return result.user;
     } on FirebaseAuthException catch (e) {
       dev.log('FirebaseAuth error: ${e.code} ${e.message}', name: _tag);

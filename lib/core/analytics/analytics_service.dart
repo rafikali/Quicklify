@@ -146,6 +146,49 @@ class AnalyticsService with WidgetsBindingObserver {
     }
   }
 
+  /// Called by [AuthService] on successful sign-in. Copies the events
+  /// recorded for this device's fingerprint under `anonymous_activity/`
+  /// into the user's `profiles/{uid}/activity/` so their timeline is
+  /// continuous across the sign-in boundary. Anonymous source events are
+  /// preserved (not deleted) so the device-level log stays intact for
+  /// future signed-out sessions on the same device.
+  ///
+  /// Capped at 500 events (Firestore batch limit). For typical install
+  /// histories this is more than enough; very old events older than the
+  /// cap simply don't merge — they remain visible in the admin's
+  /// `/devices/{fp}` view.
+  Future<void> mergeAnonymousActivity(String uid) async {
+    try {
+      final fp = _deviceFingerprint ??
+          await DeviceFingerprintService.compute();
+      if (fp.isEmpty) return;
+
+      final snap = await _db
+          .collection('anonymous_activity')
+          .doc(fp)
+          .collection('events')
+          .orderBy('timestamp')
+          .limit(500)
+          .get();
+      if (snap.docs.isEmpty) return;
+
+      final dest =
+          _db.collection('profiles').doc(uid).collection('activity');
+      final batch = _db.batch();
+      for (final doc in snap.docs) {
+        final data = Map<String, dynamic>.from(doc.data());
+        data['mergedFromDevice'] = fp;
+        data['mergedAt'] = FieldValue.serverTimestamp();
+        batch.set(dest.doc(), data);
+      }
+      await batch.commit();
+      dev.log('Merged ${snap.docs.length} anonymous events → profile $uid',
+          name: _tag);
+    } catch (e) {
+      dev.log('merge failed: $e', name: _tag);
+    }
+  }
+
   // ── Firestore activity log ─────────────────────────────────────────
 
   Future<void> _writeActivityLog(

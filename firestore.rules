@@ -79,10 +79,19 @@ service cloud.firestore {
 
     // Anonymous activity log: signed-out users keyed by their device
     // fingerprint. Same shape as profiles/{uid}/activity but lives at
-    // its own root so we don't have to invent a fake uid. World-readable
-    // by `get` is overkill — only admin reads it.
+    // its own root so we don't have to invent a fake uid.
+    //
+    // Reads: open to any signed-in user. Lookup requires knowing the
+    //   exact fingerprint (sha256 of ANDROID_ID + cert_hash) which is
+    //   computationally unguessable. This unlocks the client-side merge
+    //   on sign-in — without Cloud Functions there's no other way for
+    //   the user to copy their pre-login events into their profile log.
+    //   list is gated the same way; collection-group enumeration is
+    //   still blocked because there's no top-level rule for it.
+    // Writes: anonymous create allowed (no user yet). Append-only.
     match /anonymous_activity/{deviceFp}/events/{eventId} {
-      allow read:   if isAdmin();
+      allow get:    if isSignedIn() || isAdmin();
+      allow list:   if isSignedIn() || isAdmin();
       allow create: if true;
       allow update, delete: if false;
     }
