@@ -1,10 +1,12 @@
 /// Root-level gate that wraps the app's home tree.
 ///
 /// Decision order (first match wins):
-///   1. signed-in user has `profiles/{uid}.banned == true` → BlackoutScreen
-///      (per-user ban applied from the admin panel)
-///   2. installed version < min_required_version → ForceUpdateScreen
-///   3. otherwise → child (the real app)
+///   1. device is banned (works for signed-out users) → BlackoutScreen
+///      (admin bans the device fingerprint from `device_registry`)
+///   2. signed-in user has `profiles/{uid}.banned == true` → BlackoutScreen
+///      (admin bans the account from the Users page)
+///   3. installed version < min_required_version → ForceUpdateScreen
+///   4. otherwise → child (the real app)
 ///
 /// Re-evaluates on every Firestore snapshot AND on AppLifecycleState.resumed
 /// so changes made while the app was backgrounded take effect the instant
@@ -15,6 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../core/services/app_config_service.dart';
+import '../../core/services/device_ban_service.dart';
 import '../../core/services/user_ban_service.dart';
 import '../../data/models/app_config.dart';
 import 'blackout_screen.dart';
@@ -45,6 +48,9 @@ class _AppGateState extends State<AppGate> with WidgetsBindingObserver {
     UserBanService.instance.changes.listen((_) {
       if (mounted) setState(() {});
     });
+    DeviceBanService.instance.changes.listen((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   Future<void> _loadVersion() async {
@@ -60,6 +66,7 @@ class _AppGateState extends State<AppGate> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       AppConfigService.instance.fetchOnce();
+      DeviceBanService.instance.fetchOnce();
       UserBanService.instance.fetchOnce();
     }
   }
@@ -72,6 +79,9 @@ class _AppGateState extends State<AppGate> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    if (DeviceBanService.instance.isBanned) {
+      return BlackoutScreen(message: DeviceBanService.instance.banReason);
+    }
     if (UserBanService.instance.isBanned) {
       return BlackoutScreen(message: UserBanService.instance.banReason);
     }

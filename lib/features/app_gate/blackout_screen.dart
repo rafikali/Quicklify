@@ -39,7 +39,7 @@ class BlackoutScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 32),
                   const Text(
-                    'Account suspended',
+                    'Access blocked',
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w700,

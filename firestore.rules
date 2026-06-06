@@ -96,5 +96,30 @@ service cloud.firestore {
       allow read:  if true;
       allow write: if false;
     }
+
+    // Device registry: per-install heartbeat doc keyed by the device
+    // fingerprint sha256. Used for device-level bans that work even when
+    // the user is not signed in.
+    //
+    //   get  — world-readable so the unauthenticated app can check whether
+    //          its own device is banned. `list` is admin-only to prevent
+    //          enumeration / scraping of the registry.
+    //   create — anyone can create their own device's doc on first launch,
+    //            but only with non-ban fields and banned=false.
+    //   update — anyone can update heartbeat fields (lastSeenAt, version,
+    //            etc) on any device doc; ban fields are admin-only.
+    //   delete — admin-only via SDK (rules block client deletes).
+    match /device_registry/{deviceId} {
+      allow get:    if true;
+      allow list:   if isAdmin();
+      allow create: if request.resource.data.banned == false
+                    && !('banReason' in request.resource.data)
+                    && !('bannedAt'  in request.resource.data)
+                    && !('bannedBy'  in request.resource.data);
+      allow update: if request.resource.data.diff(resource.data).affectedKeys()
+                      .hasOnly(['lastSeenAt', 'lastVersion', 'lastUserUid',
+                                'platform', 'deviceLabel']);
+      allow delete: if false;
+    }
   }
 }

@@ -21,6 +21,8 @@ type AuditAction =
   | 'revoke_device'
   | 'ban_user'
   | 'unban_user'
+  | 'ban_device'
+  | 'unban_device'
   | 'create_plan'
   | 'update_plan'
   | 'delete_plan'
@@ -396,6 +398,66 @@ export async function banUserAction(
   });
 
   revalidatePath(`/users/${targetUid}`);
+}
+
+// ---------- device bans (works for signed-out users) ---------------------
+
+export async function banDeviceAction(
+  deviceId: string,
+  reason: string
+): Promise<void> {
+  if (deviceId.trim().length < 8) {
+    throw new Error('Device ID looks invalid');
+  }
+  if (reason.trim().length < 3) {
+    throw new Error('Reason required (min 3 chars)');
+  }
+  const adminUid = await requireAdmin();
+  const { db } = firebaseAdmin();
+  const ref = db.collection('device_registry').doc(deviceId.trim());
+
+  // Doc may not exist yet (admin pasted an ID before the device ever ran the
+  // app); merge:true creates it. The mobile app gate reads this doc on launch.
+  await ref.set(
+    {
+      banned: true,
+      banReason: reason.trim(),
+      bannedAt: Timestamp.now(),
+      bannedBy: adminUid,
+    },
+    { merge: true }
+  );
+
+  await writeAudit({
+    action: 'ban_device',
+    actorAdminUid: adminUid,
+    targetUserUid: deviceId.trim(),
+    afterState: { reason: reason.trim() },
+  });
+
+  revalidatePath('/devices');
+}
+
+export async function unbanDeviceAction(deviceId: string): Promise<void> {
+  const adminUid = await requireAdmin();
+  const { db } = firebaseAdmin();
+  const ref = db.collection('device_registry').doc(deviceId);
+
+  await ref.update({
+    banned: false,
+    banReason: FieldValue.delete(),
+    bannedAt: FieldValue.delete(),
+    bannedBy: FieldValue.delete(),
+  });
+
+  await writeAudit({
+    action: 'unban_device',
+    actorAdminUid: adminUid,
+    targetUserUid: deviceId,
+    afterState: {},
+  });
+
+  revalidatePath('/devices');
 }
 
 export async function unbanUserAction(targetUid: string): Promise<void> {

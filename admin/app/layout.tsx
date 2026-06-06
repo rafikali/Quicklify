@@ -30,6 +30,7 @@ function Nav() {
           Quicklify Admin
         </Link>
         <Link href="/users" className="text-muted hover:text-text text-sm">Users</Link>
+        <Link href="/devices" className="text-muted hover:text-text text-sm">Devices</Link>
         <Link href="/plans" className="text-muted hover:text-text text-sm">Plans</Link>
         <Link href="/app-control" className="text-muted hover:text-text text-sm">App control</Link>
         <Link href="/audit" className="text-muted hover:text-text text-sm">Audit log</Link>
