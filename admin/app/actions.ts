@@ -22,7 +22,8 @@ type AuditAction =
   | 'ban_user'
   | 'create_plan'
   | 'update_plan'
-  | 'delete_plan';
+  | 'delete_plan'
+  | 'update_app_config';
 
 interface AuditInput {
   action: AuditAction;
@@ -295,6 +296,74 @@ export async function revokeDeviceAction(
   });
 
   revalidatePath(`/users/${targetUid}`);
+}
+
+// ---------- app config (force-update / blackout gate) ---------------------
+
+export interface AppConfigInput {
+  minRequiredVersion: string;
+  latestVersion: string;
+  apkUrl: string;
+  blackoutEnabled: boolean;
+  blackoutMessage: string;
+  updateMessage: string;
+}
+
+const SEMVER_RE = /^\d+(\.\d+){0,3}$/;
+
+function validateAppConfig(input: AppConfigInput): void {
+  if (!SEMVER_RE.test(input.minRequiredVersion.trim())) {
+    throw new Error('minRequiredVersion must be dotted numbers like 1.4.0');
+  }
+  if (!SEMVER_RE.test(input.latestVersion.trim())) {
+    throw new Error('latestVersion must be dotted numbers like 1.5.0');
+  }
+  try {
+    const u = new URL(input.apkUrl.trim());
+    if (u.protocol !== 'https:') throw new Error('must be https');
+  } catch {
+    throw new Error('apkUrl must be a valid https URL');
+  }
+  if (input.blackoutMessage.trim().length < 3) {
+    throw new Error('blackoutMessage is required');
+  }
+  if (input.updateMessage.trim().length < 3) {
+    throw new Error('updateMessage is required');
+  }
+}
+
+export async function updateAppConfigAction(
+  input: AppConfigInput
+): Promise<void> {
+  const adminUid = await requireAdmin();
+  validateAppConfig(input);
+
+  const { db } = firebaseAdmin();
+  const ref = db.collection('config').doc('app');
+  const before = (await ref.get()).data() ?? null;
+
+  const next = {
+    minRequiredVersion: input.minRequiredVersion.trim(),
+    latestVersion: input.latestVersion.trim(),
+    apkUrl: input.apkUrl.trim(),
+    blackoutEnabled: input.blackoutEnabled,
+    blackoutMessage: input.blackoutMessage.trim(),
+    updateMessage: input.updateMessage.trim(),
+    updatedAt: FieldValue.serverTimestamp(),
+    updatedBy: adminUid,
+  };
+
+  await ref.set(next, { merge: true });
+
+  await writeAudit({
+    action: 'update_app_config',
+    actorAdminUid: adminUid,
+    targetUserUid: 'app',
+    beforeState: before ?? {},
+    afterState: { ...input },
+  });
+
+  revalidatePath('/app-control');
 }
 
 export async function banUserAction(

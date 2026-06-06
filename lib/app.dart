@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
+import 'features/app_gate/app_gate.dart';
 import 'features/shell/app_shell.dart';
 import 'features/settings/settings_provider.dart';
 import 'features_v2/theme/flux_theme.dart';
@@ -20,7 +21,7 @@ class QuicklifyApp extends StatelessWidget {
         title: 'Quicklify',
         debugShowCheckedModeBanner: false,
         theme: FluxTheme.dark,
-        home: SplashScreenV2(sharedUrl: sharedUrl),
+        home: AppGate(child: SplashScreenV2(sharedUrl: sharedUrl)),
       );
     }
 
@@ -28,7 +29,7 @@ class QuicklifyApp extends StatelessWidget {
       title: 'Quicklify',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
-      home: AppShell(sharedUrl: sharedUrl),
+      home: AppGate(child: AppShell(sharedUrl: sharedUrl)),
     );
   }
 }

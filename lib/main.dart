@@ -7,6 +7,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 
 import 'app.dart';
+import 'core/services/app_config_service.dart';
 import 'core/services/download_service.dart';
 import 'core/services/plans_service.dart';
 import 'core/services/premium_service.dart';
@@ -51,6 +52,9 @@ void main() async {
   // Plans listener is fire-and-forget — fallback catalog is used until the
   // first Firestore snapshot arrives.
   unawaited(PlansService.instance.initialize());
+  // App gate config: hydrate cache + start listener before runApp so the
+  // first frame already reflects blackout/force-update state when available.
+  await AppConfigService.instance.initialize();
 
   // Listen for share intents
   String? sharedUrl;

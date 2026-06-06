@@ -87,5 +87,14 @@ service cloud.firestore {
       allow read:  if true;
       allow write: if false;
     }
+
+    // App-wide remote config (force-update gate, blackout kill-switch,
+    // latest version, APK URL). World-readable so the gate works for
+    // signed-out users on first launch. Writes happen ONLY via the admin
+    // panel server actions (Admin SDK bypasses these rules).
+    match /config/{docId} {
+      allow read:  if true;
+      allow write: if false;
+    }
   }
 }
