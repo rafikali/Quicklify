@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { firebaseAdmin } from '@/lib/firebase-admin';
 import { getCurrentAdminUid } from '@/lib/admin-auth';
 import { AdsForm, type AdsConfigRow } from './ads-form';
+import { HowToNote } from '@/components/how-to-note';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,6 +36,26 @@ export default async function AdsPage() {
         user&apos;s next app launch or on the next Firestore snapshot —
         usually within seconds for users actively in the app.
       </p>
+
+      <HowToNote
+        whatToDo={[
+          'Cadence: "Show every N downloads" controls how often a full-screen ad appears. 1 = every download (most aggressive — pushes premium). Higher = lighter.',
+          'Min interval: minimum seconds between two interstitials so two ads do not stack.',
+          'Interstitial provider: pick "admob" for real AdMob ads, or "house" to play YOUR OWN promo video (set the URL + CTA below).',
+          'Banner provider: same choice for the small banner ad on screen edges.',
+          'If you switch to "house", fill the Video URL (mp4), CTA text, CTA URL, and skip-after seconds. For banner: image URL + tap-through URL.',
+          'Click Save. The mobile app picks up the new config within ~2 seconds via Firestore stream.',
+        ]}
+        howToVerify={[
+          'Open the app and download any video.',
+          'On the download-complete screen, the ad should appear with the cadence and provider you configured.',
+          'To verify the provider switch: set provider=house, save, then trigger a download → you should see your promo video (not AdMob test ad).',
+          'To verify cadence: set "every 1 download", do two downloads back-to-back → both should show ads (subject to the min-interval guard).',
+          'To verify the min-interval guard: set min-interval=60, do two downloads within 30s → second one should NOT show an ad.',
+        ]}
+        tip="No app rebuild needed for cadence/provider changes — they hot-reload from Firestore. But the first launch after install must succeed before changes can stream in."
+      />
+
       <AdsForm initial={current} />
     </div>
   );

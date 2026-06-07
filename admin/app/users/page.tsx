@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { firebaseAdmin } from '@/lib/firebase-admin';
 import { getCurrentAdminUid } from '@/lib/admin-auth';
+import { HowToNote } from '@/components/how-to-note';
 
 interface ProfileRow {
   uid: string;
@@ -27,6 +28,20 @@ export default async function UsersPage({
   return (
     <div>
       <h1 className="text-xl font-semibold mb-4">Users</h1>
+
+      <HowToNote
+        whatToDo={[
+          'Search by email to find a specific signed-in user.',
+          'Click "Manage →" on any row to open the user profile.',
+          'Inside the profile you can: grant premium for a chosen plan, revoke premium, revoke individual devices, ban the user, or review their activity log + audit log.',
+        ]}
+        howToVerify={[
+          'On the test phone, sign in with a Google account that has email X.',
+          'On this page, type X into the search box → the profile should appear within a few seconds (after the first launch heart-beats the profile doc).',
+          'Click Manage → grant premium for any plan → on the phone, force-stop & reopen → premium features should now be unlocked.',
+        ]}
+        tip="A user only shows up here AFTER they sign in for the first time (the app creates their profile doc on first auth). Signed-out users live under the Devices tab."
+      />
 
       <form className="mb-6" action="/users" method="GET">
         <input

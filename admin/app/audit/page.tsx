@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { firebaseAdmin } from '@/lib/firebase-admin';
 import { getCurrentAdminUid } from '@/lib/admin-auth';
+import { HowToNote } from '@/components/how-to-note';
 
 interface AuditRow {
   id: string;
@@ -26,6 +27,20 @@ export default async function AuditPage({
   return (
     <div>
       <h1 className="text-xl font-semibold mb-4">Audit log (last 200)</h1>
+
+      <HowToNote
+        whatToDo={[
+          'This is a read-only log of every admin action. You cannot edit or delete entries here.',
+          'Use the "Filter by action" dropdown to narrow down (e.g. only grant_premium events).',
+          'Click any "target" user link to jump to that user profile.',
+          'Use this log to investigate "who did what" — e.g. who granted free premium to a friend, or who revoked a paying user by mistake.',
+        ]}
+        howToVerify={[
+          'Perform any admin action elsewhere (grant premium to a test user, ban a device, etc.).',
+          'Come back here and reload — the new entry should be at the top of the list with your admin uid as actor and the affected user as target.',
+        ]}
+        tip="This log is append-only at the database level (rules block updates/deletes) so even with admin Firestore access nobody can rewrite history without the service account."
+      />
 
       <form className="mb-6" action="/audit" method="GET">
         <select

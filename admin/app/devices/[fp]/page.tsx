@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { firebaseAdmin } from '@/lib/firebase-admin';
 import { getCurrentAdminUid } from '@/lib/admin-auth';
+import { HowToNote } from '@/components/how-to-note';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,6 +50,23 @@ export default async function DeviceDetailPage({
         <p className="text-muted text-xs font-mono mt-1 break-all">
           {device.fp}
         </p>
+      </div>
+
+      <div className="mt-6">
+        <HowToNote
+          whatToDo={[
+            'Review device metadata to confirm this is the right physical device (platform + last app version + first/last seen).',
+            'Scroll the Anonymous activity list to see what the user did on this device while signed out (screen views, downloads, errors).',
+            'If the activity looks abusive (mass downloads, error spam, fraud signals), go back to /devices and ban this fingerprint.',
+            'If the device has a "Last signed-in user", click that link to see their full profile + paid status.',
+          ]}
+          howToVerify={[
+            'On the test phone, do something while signed OUT — e.g. open the app, browse to Settings, attempt one download.',
+            'Refresh this page in a few seconds. The events should appear in the Anonymous activity list with their timestamp.',
+            'Sign IN on the same phone. Refresh the user profile page — the same events should be MIRRORED into their activity timeline (marked with "mergedFromDevice").',
+          ]}
+          tip="Anonymous events stay on this page even after sign-in (they are copied, not moved), so the device-level log remains intact across sessions."
+        />
       </div>
 
       <Section title="Device metadata">

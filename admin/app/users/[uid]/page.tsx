@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { firebaseAdmin } from '@/lib/firebase-admin';
 import { getCurrentAdminUid } from '@/lib/admin-auth';
 import { GrantPremiumForm, RevokePremiumForm, RevokeDeviceButton, BanUserForm, type GrantPlanOption } from './forms';
+import { HowToNote } from '@/components/how-to-note';
 
 interface UserDetail {
   uid: string;
@@ -76,6 +77,24 @@ export default async function UserDetailPage({
         {user.banned && (
           <span className="ml-auto text-danger font-medium">BANNED</span>
         )}
+      </div>
+
+      <div className="mt-6">
+        <HowToNote
+          whatToDo={[
+            'Subscription section: pick a plan + click Grant to unlock premium. To revoke, click Revoke premium (the audit log captures who did it).',
+            'Devices section: review the 1-3 devices this user has paired. Click Revoke on a device to free a slot (helpful when they hit the 3-device cap and need to swap phones).',
+            'User activity: the last 100 important events from this user (downloads, premium taps, errors). Use it to investigate complaints — "I tried to download but it failed" → search for downloadFailed in the timeline.',
+            'Danger zone: ban the user. This is account-level (different from device ban). A banned user sees a blackout screen on every device they sign in on.',
+          ]}
+          howToVerify={[
+            'Grant flow: pick a plan → Grant. On the phone, force-stop & reopen → premium features (e.g. Edit caption, ad-free) should be unlocked.',
+            'Revoke flow: Revoke premium → on the phone, premium features should be locked again on next foreground.',
+            'Device revoke: click Revoke on a device. On THAT phone, the app should sign the user out / show "device revoked" within ~2s.',
+            'User ban: type a reason → Ban. On the phone, the blackout screen should appear within ~2s with that reason. Unbanning lifts it.',
+          ]}
+          tip="All actions in this section are recorded to the audit log with timestamp + the admin uid that performed them. Every change is reversible from this same screen except viewing activity (which is read-only)."
+        />
       </div>
 
       <Section title="Subscription">
